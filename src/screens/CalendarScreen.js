@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
         paddingVertical: 24,
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
+        marginTop: 16,
     },
     headerIcon: {
         width: 48,

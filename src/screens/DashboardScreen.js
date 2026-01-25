@@ -164,6 +164,7 @@ const styles = StyleSheet.create({
         padding: 20,
         marginHorizontal: 16,
         borderRadius: 12,
+        marginTop: 16,
     },
     greetingTextContainer: {
         flex: 1,

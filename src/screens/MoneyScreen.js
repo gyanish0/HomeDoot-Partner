@@ -183,6 +183,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 24,
+        marginTop: 16,
     },
     earningsHeader: {
         flexDirection: 'row',

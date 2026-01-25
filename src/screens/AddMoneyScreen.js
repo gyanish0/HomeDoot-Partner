@@ -44,7 +44,6 @@ const AddMoneyScreen = ({ navigation }) => {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
             >
-                <Text style={styles.title}>Add credits</Text>
 
                 {/* Credits Input */}
                 <View style={styles.inputContainer}>
@@ -163,6 +162,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginBottom: 24,
         paddingHorizontal: 16,
+        marginTop: 16,
     },
     inputIcon: {
         marginRight: 12,

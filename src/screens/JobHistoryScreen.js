@@ -109,7 +109,6 @@ const JobHistoryScreen = () => {
                     />
                 }
             >
-                <Text style={styles.title}>Job History</Text>
 
                 {jobHistory.length > 0 ? (
                     <View style={styles.historyList}>
