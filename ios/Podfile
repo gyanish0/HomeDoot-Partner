@@ -1,0 +1,69 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, '15.0'
+
+# Force RN-related pods to static to avoid duplicate modulemaps / .pch issues
+pre_install do |installer|
+  installer.pod_targets.each do |pod|
+    name = pod.name
+    if name =~ /^React/ ||
+       name =~ /^RCT/ ||
+       name =~ /^FBReact/ ||
+       name.include?("ReactCommon") ||
+       name.include?("Codegen") ||
+       name.include?("Yoga")
+      def pod.build_type; Pod::BuildType.static_library; end
+    end
+  end
+end
+
+require_relative '../node_modules/react-native/scripts/react_native_pods'
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'cars24x7userapp' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :hermes_enabled => false,
+    :fabric_enabled => false,
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :production => true
+  )
+
+  # Your normal pods can be added here
+
+  target 'cars24x7userappTests' do
+    inherit! :complete
+  end
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+    )
+
+    # Ensure DWARF + dSYM and disable stripping for all pods
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+         config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+         config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+         config.build_settings['COPY_PHASE_STRIP'] = 'NO'
+      end
+    end
+
+    # Additional post-install configurations can be added here
+  end
+end
