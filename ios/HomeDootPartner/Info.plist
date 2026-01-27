@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Cars 24/7</string>
+	<string>HomeDoot Partner</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -32,13 +32,13 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>App requires access to the camera to take your profile picture and capture car photos when requesting car spare parts.</string>
+	<string>HomeDoot Partner requires access to the camera to take photos for service documentation and profile pictures.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>App requires access to your location to show nearby cars, repair shops, and related services.</string>
+	<string>HomeDoot Partner requires access to your location to navigate to customer locations and provide home services.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>cars24/7-App would like to use your location to find the nearest car repair shops and provide better recommendations.</string>
+	<string>HomeDoot Partner would like to use your location to navigate to customer addresses and provide accurate service delivery.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>App requires access to your photo gallery to select your profile picture and car photos when requesting car spare parts.</string>
+	<string>HomeDoot Partner requires access to your photo gallery to select photos for service documentation and profile pictures.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Roboto_Condensed-Bold.ttf</string>

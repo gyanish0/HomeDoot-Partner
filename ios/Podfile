@@ -31,7 +31,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'cars24x7userapp' do
+target 'HomeDootPartner' do
   config = use_native_modules!
 
   use_react_native!(
@@ -44,7 +44,7 @@ target 'cars24x7userapp' do
 
   # Your normal pods can be added here
 
-  target 'cars24x7userappTests' do
+  target 'HomeDootPartnerTests' do
     inherit! :complete
   end
 
