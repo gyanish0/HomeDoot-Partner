@@ -2,8 +2,9 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LogBox } from 'react-native';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
 import RootNavigator from './src/navigation/RootNavigator';
-import { AuthProvider } from './src/context/AuthContext';
 
 // Ignore all logs in production
 if (!__DEV__) {
@@ -16,13 +17,13 @@ LogBox.ignoreAllLogs();
 
 const App = () => {
   return (
-    <AuthProvider>
+    <Provider store={store}>
       <SafeAreaProvider>
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>
       </SafeAreaProvider>
-    </AuthProvider>
+    </Provider>
   );
 };
 

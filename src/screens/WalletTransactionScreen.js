@@ -1,64 +1,133 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import Colors from '../constants/Colors';
+import {
+    getVendorWalletCreditTransactions,
+    getVendorWalletDebitTransactions,
+} from '../services/vendorService';
 
 const WalletTransactionScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
-    const [transactions] = useState([
-        {
-            id: 1,
-            amount: 24.95,
-            type: 'credit',
-            orderNo: 'HD00511',
-            createdAt: '2026-01-20 11:20:01',
-        },
-        {
-            id: 2,
-            amount: -799.75,
-            type: 'debit',
-            orderNo: 'HD00512',
-            createdAt: '2026-01-17 19:55:57',
-        },
-        {
-            id: 3,
-            amount: -24.95,
-            type: 'debit',
-            orderNo: 'HD00511',
-            createdAt: '2026-01-16 22:55:57',
-        },
-        {
-            id: 4,
-            amount: -799.75,
-            type: 'debit',
-            orderNo: 'HD00510',
-            createdAt: '2026-01-16 05:47:24',
-        },
-        {
-            id: 5,
-            amount: -799.75,
-            type: 'debit',
-            orderNo: 'HD00506',
-            createdAt: '2026-01-15 15:44:58',
-        },
-        {
-            id: 6,
-            amount: -799.75,
-            type: 'debit',
-            orderNo: 'HD00507',
-            createdAt: '2026-01-15 15:44:53',
-        },
-        {
-            id: 7,
-            amount: -999.75,
-            type: 'debit',
-            orderNo: 'HD00508',
-            createdAt: '2026-01-15 15:44:48',
-        },
-    ]);
+    const [transactions, setTransactions] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [transactionType, setTransactionType] = useState('all'); // 'all', 'credit', 'debit'
+
+    useEffect(() => {
+        loadTransactions();
+    }, [transactionType]);
+
+    const loadTransactions = async () => {
+        setLoading(true);
+        try {
+            const perPage = 20;
+            let creditTransactions = [];
+            let debitTransactions = [];
+
+            if (transactionType === 'all' || transactionType === 'credit') {
+                const creditResponse = await getVendorWalletCreditTransactions(currentPage, perPage);
+                if (creditResponse?.success && creditResponse?.data) {
+                    creditTransactions = creditResponse.data.map(item => ({
+                        ...item,
+                        id: item.id,
+                        amount: parseFloat(item.amount),
+                        type: 'credit',
+                        orderNo: item.order_no || item.order_number || `HD${String(item.id).padStart(5, '0')}`,
+                        createdAt: item.created_at || item.date,
+                    }));
+                }
+            }
+
+            if (transactionType === 'all' || transactionType === 'debit') {
+                const debitResponse = await getVendorWalletDebitTransactions(currentPage, perPage);
+                if (debitResponse?.success && debitResponse?.data) {
+                    debitTransactions = debitResponse.data.map(item => ({
+                        ...item,
+                        id: item.id,
+                        amount: -Math.abs(parseFloat(item.amount)),
+                        type: 'debit',
+                        orderNo: item.order_no || item.order_number || `HD${String(item.id).padStart(5, '0')}`,
+                        createdAt: item.created_at || item.date,
+                    }));
+                }
+            }
+
+            const allTransactions = [...creditTransactions, ...debitTransactions]
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            setTransactions(allTransactions);
+
+            if (allTransactions.length === 0) {
+                // Fallback to mock data
+                loadMockTransactions();
+            }
+        } catch (error) {
+            console.error('Error loading transactions:', error);
+            Alert.alert('Error', 'Failed to load transactions. Using local data.');
+            loadMockTransactions();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadMockTransactions = () => {
+        setTransactions([
+            {
+                id: 1,
+                amount: 24.95,
+                type: 'credit',
+                orderNo: 'HD00511',
+                createdAt: '2026-01-20 11:20:01',
+            },
+            {
+                id: 2,
+                amount: -799.75,
+                type: 'debit',
+                orderNo: 'HD00512',
+                createdAt: '2026-01-17 19:55:57',
+            },
+            {
+                id: 3,
+                amount: -24.95,
+                type: 'debit',
+                orderNo: 'HD00511',
+                createdAt: '2026-01-16 22:55:57',
+            },
+            {
+                id: 4,
+                amount: -799.75,
+                type: 'debit',
+                orderNo: 'HD00510',
+                createdAt: '2026-01-16 05:47:24',
+            },
+            {
+                id: 5,
+                amount: -799.75,
+                type: 'debit',
+                orderNo: 'HD00506',
+                createdAt: '2026-01-15 15:44:58',
+            },
+            {
+                id: 6,
+                amount: -799.75,
+                type: 'debit',
+                orderNo: 'HD00507',
+                createdAt: '2026-01-15 15:44:53',
+            },
+            {
+                id: 7,
+                amount: -999.75,
+                type: 'debit',
+                orderNo: 'HD00508',
+                createdAt: '2026-01-15 15:44:48',
+            },
+        ]);
+    };
 
     const onRefresh = () => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1000);
+        setCurrentPage(1);
+        loadTransactions().finally(() => setRefreshing(false));
     };
 
     const handleAddMoney = () => {

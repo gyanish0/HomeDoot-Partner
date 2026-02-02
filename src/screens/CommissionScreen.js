@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { mockCommissionData } from '../data/mockData';
 import Colors from '../constants/Colors';
+import {
+    getVendorCommissionCurrentMonth,
+    getVendorCommissionCustomRange,
+} from '../services/vendorService';
 
 const CommissionScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
-    const [commissionData] = useState(mockCommissionData.data);
+    const [commissionData, setCommissionData] = useState(mockCommissionData.data);
     const [fromDate, setFromDate] = useState(new Date(2026, 4, 1)); // May 1, 2026
     const [toDate, setToDate] = useState(new Date(2026, 4, 31)); // May 31, 2026
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [datePickerMode, setDatePickerMode] = useState('from'); // 'from' or 'to'
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadCommissionData();
+    }, []);
 
     const formatDate = (date) => {
         if (!date) return '';
@@ -20,18 +29,58 @@ const CommissionScreen = () => {
         return `${day}/${month}/${year}`;
     };
 
+    const formatDateForAPI = (date) => {
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const loadCommissionData = async (customRange = false) => {
+        setLoading(true);
+        try {
+            let response;
+            if (customRange) {
+                const fromDateStr = formatDateForAPI(fromDate);
+                const toDateStr = formatDateForAPI(toDate);
+                response = await getVendorCommissionCustomRange(fromDateStr, toDateStr);
+            } else {
+                response = await getVendorCommissionCurrentMonth();
+            }
+
+            if (response?.success && response?.data) {
+                setCommissionData(response.data);
+            } else {
+                // Fallback to mock data if API fails
+                setCommissionData(mockCommissionData.data);
+            }
+        } catch (error) {
+            console.error('Error loading commission data:', error);
+            Alert.alert('Error', 'Failed to load commission data. Using local data.');
+            setCommissionData(mockCommissionData.data);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const onRefresh = () => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1000);
+        loadCommissionData().finally(() => setRefreshing(false));
     };
 
     const handleSearch = () => {
-        Alert.alert('Search', `Searching commissions from ${formatDate(fromDate)} to ${formatDate(toDate)}`);
+        if (fromDate > toDate) {
+            Alert.alert('Invalid Date Range', 'From date cannot be after To date');
+            return;
+        }
+        loadCommissionData(true);
     };
 
     const handleClear = () => {
         setFromDate(new Date());
         setToDate(new Date());
+        loadCommissionData(false);
     };
 
     const openDatePicker = (mode) => {

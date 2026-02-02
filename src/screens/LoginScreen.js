@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, Image, ActivityIndicator, Alert } from 'react-native';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { sendLoginOtp } from '../services/authService';
+import { useDispatch, useSelector } from 'react-redux';
+import { sendOTP, clearError } from '../store/slices/authSlice';
 
 const loginValidationSchema = Yup.object().shape({
     mobileNumber: Yup.string()
@@ -11,7 +12,8 @@ const loginValidationSchema = Yup.object().shape({
 });
 
 const LoginScreen = ({ navigation }) => {
-    const [loading, setLoading] = useState(false);
+    const dispatch = useDispatch();
+    const { loading, error, otpSent } = useSelector((state) => state.auth);
 
     const formik = useFormik({
         initialValues: {
@@ -19,23 +21,18 @@ const LoginScreen = ({ navigation }) => {
         },
         validationSchema: loginValidationSchema,
         onSubmit: async (values) => {
-            setLoading(true);
             try {
-                // TEMPORARY: Bypass API for testing
-                // const response = await sendLoginOtp(values.mobileNumber);
-                setLoading(false);
-                // console.log(response, 'responseresponse====')
-                // if (response && response.success) {
-                navigation.navigate('Otp', {
-                    mobileNumber: values.mobileNumber,
-                    from: 'login'
-                });
-                // } else {
-                //     Alert.alert('Error', response?.message || 'Failed to send OTP. Please try again.');
-                // }
+                const result = await dispatch(sendOTP(values.mobileNumber)).unwrap();
+                if (result.status) {
+                    navigation.navigate('Otp', {
+                        mobileNumber: values.mobileNumber,
+                        from: 'login'
+                    });
+                } else {
+                    Alert.alert('Error', result.message || 'Failed to send OTP. Please try again.');
+                }
             } catch (error) {
-                setLoading(false);
-                Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+                Alert.alert('Error', error || 'Something went wrong. Please try again.');
             }
         },
     });

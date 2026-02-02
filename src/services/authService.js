@@ -3,28 +3,21 @@
  * Handles all authentication-related API calls
  */
 
-import { post, postWithQuery } from './api';
+import axiosInstance from './axiosInstance';
 
 /**
  * Send OTP to mobile number for login
  * @param {string} mobile - Mobile number
  * @returns {Promise} - API response with OTP sent status
  */
-export const sendLoginOtp = async (mobile) => {
-    console.log('Sending OTP to mobile:', mobile);
+export const sendOTP = async (mobile) => {
     try {
-        const response = await post('send-user-otp', {
+        const response = await axiosInstance.post('/send-otp', {
             mobile: mobile,
-            guard: 'vendor'
         });
-        console.log('Send OTP Response:', response);
         return response;
     } catch (error) {
-        console.error('Send OTP Error:', error.message);
-        // Provide helpful error message
-        if (error.message.includes('non-JSON') || error.message.includes('parse')) {
-            throw new Error('OTP login endpoint not configured on server. Contact backend team.');
-        }
+        console.error('Send OTP Error:', error);
         throw error;
     }
 };
@@ -35,18 +28,50 @@ export const sendLoginOtp = async (mobile) => {
  * @param {string} otp - OTP code
  * @returns {Promise} - API response with user data and token
  */
-export const verifyLoginOtp = async (mobile, otp) => {
+export const verifyOTP = async (mobile, otp) => {
     try {
-        const response = await post('verify-user-otp', {
+        const response = await axiosInstance.post('/verify-otp', {
             mobile: mobile,
             otp: otp,
-            guard: 'vendor'
         });
         return response;
     } catch (error) {
+        console.error('Verify OTP Error:', error);
         throw error;
     }
 };
+
+/**
+ * Get Vendor Dashboard Data (Protected Route)
+ * @returns {Promise} - API response with dashboard data
+ */
+export const getDashboard = async () => {
+    try {
+        const response = await axiosInstance.get('/dashboard');
+        return response;
+    } catch (error) {
+        console.error('Get Dashboard Error:', error);
+        throw error;
+    }
+};
+
+/**
+ * Logout vendor
+ * @returns {Promise} - API response
+ */
+export const logout = async () => {
+    try {
+        const response = await axiosInstance.post('/logout');
+        return response;
+    } catch (error) {
+        console.error('Logout Error:', error);
+        throw error;
+    }
+};
+
+// Legacy methods for backward compatibility
+export const sendLoginOtp = sendOTP;
+export const verifyLoginOtp = verifyOTP;
 
 /**
  * Traditional login with username and password (keeping for backward compatibility)

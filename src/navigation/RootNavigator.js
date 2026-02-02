@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useAuth } from '../context/AuthContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { loadUserData } from '../store/slices/authSlice';
 import AuthStack from './AuthStack';
 import SplashScreen from '../screens/SplashScreen';
 import BottomTabNavigator from './BottomTabNavigator';
@@ -16,14 +17,21 @@ import AddMoneyScreen from '../screens/AddMoneyScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsConditionsScreen from '../screens/TermsConditionsScreen';
 import RefundPolicyScreen from '../screens/RefundPolicyScreen';
+import NotificationScreen from '../screens/NotificationScreen';
 
 const Stack = createStackNavigator();
 
 const RootNavigator = () => {
-    const { isLoggedIn, loading } = useAuth();
+    const dispatch = useDispatch();
+    const { isLoggedIn, initializing } = useSelector((state) => state.auth);
 
-    // Show splash screen while loading
-    if (loading) {
+    // Load user data on app start
+    useEffect(() => {
+        dispatch(loadUserData());
+    }, [dispatch]);
+
+    // Show splash screen while initializing app
+    if (initializing) {
         return (
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="Splash" component={SplashScreen} />
@@ -101,6 +109,11 @@ const RootNavigator = () => {
                         name="RefundPolicy"
                         component={RefundPolicyScreen}
                         options={{ headerShown: true, title: 'Refund Policy' }}
+                    />
+                    <Stack.Screen
+                        name="Notifications"
+                        component={NotificationScreen}
+                        options={{ headerShown: false }}
                     />
                 </>
             )}

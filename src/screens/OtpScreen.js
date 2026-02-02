@@ -2,8 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard, Image, ActivityIndicator, Alert } from 'react-native';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { verifyLoginOtp, sendLoginOtp } from '../services/authService';
-import { useAuth } from '../context/AuthContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { verifyOTP, sendOTP } from '../store/slices/authSlice';
 
 const otpValidationSchema = Yup.object().shape({
     otp: Yup.string()
@@ -12,13 +12,13 @@ const otpValidationSchema = Yup.object().shape({
 });
 
 const OtpScreen = ({ navigation, route }) => {
-    const { mobileNumber, from } = route.params || {};
+    const { mobileNumber } = route.params || {};
     const [timer, setTimer] = useState(30);
     const [canResend, setCanResend] = useState(false);
-    const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
     const [otpValues, setOtpValues] = useState(['', '', '', '']);
-    const { login } = useAuth();
+    const dispatch = useDispatch();
+    const { loading } = useSelector((state) => state.auth);
 
     useEffect(() => {
         if (timer > 0) {
@@ -37,33 +37,11 @@ const OtpScreen = ({ navigation, route }) => {
         },
         validationSchema: otpValidationSchema,
         onSubmit: async (values) => {
-            setLoading(true);
             try {
-                // TEMPORARY: Bypass API for testing
-                // const response = await verifyLoginOtp(mobileNumber, values.otp);
-                
-                // Bypass verification - simulate successful login
-                const mockUserData = {
-                    id: 1,
-                    name: 'Test User',
-                    mobile: mobileNumber,
-                    email: 'test@example.com',
-                    token: 'mock_token_for_testing'
-                };
-                
-                await login(mockUserData);
-                setLoading(false);
-
-                // if (response && response.success && response.data) {
-                //     // Save user data and navigate to home
-                //     await login(response.data);
-                //     navigation.replace('Home');
-                // } else {
-                //     Alert.alert('Error', response?.message || 'Invalid OTP. Please try again.');
-                // }
+                const result = await dispatch(verifyOTP({ mobile: mobileNumber, otp: values.otp })).unwrap();
             } catch (error) {
-                setLoading(false);
-                Alert.alert('Error', error.message || 'Verification failed. Please try again.');
+                const errorMessage = typeof error === 'string' ? error : error?.message || 'Verification failed. Please try again.';
+                Alert.alert('Error', errorMessage);
             }
         },
     });
@@ -99,16 +77,16 @@ const OtpScreen = ({ navigation, route }) => {
             formik.resetForm();
             inputRefs.current[0]?.focus();
 
-            // Call resend OTP API
             try {
-                const response = await sendLoginOtp(mobileNumber);
-                if (response && response.success) {
+                const result = await dispatch(sendOTP(mobileNumber)).unwrap();
+                if (result.status) {
                     Alert.alert('Success', 'OTP has been resent to your mobile number.');
                 } else {
                     Alert.alert('Error', 'Failed to resend OTP. Please try again.');
                 }
             } catch (error) {
-                Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+                const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to resend OTP. Please try again.';
+                Alert.alert('Error', errorMessage);
             }
         }
     };

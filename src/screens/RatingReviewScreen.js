@@ -1,16 +1,53 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, Alert } from 'react-native';
 import { mockReviewsData } from '../data/mockData';
 import Colors from '../constants/Colors';
+import { getVendorRatings } from '../services/vendorService';
 
 const RatingReviewScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
-    const [reviews] = useState(mockReviewsData.data);
+    const [reviews, setReviews] = useState(mockReviewsData.data);
     const [selectedFilter, setSelectedFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadReviews();
+    }, []);
+
+    const loadReviews = async () => {
+        setLoading(true);
+        try {
+            const perPage = 20;
+            const response = await getVendorRatings(currentPage, perPage);
+
+            if (response?.success && response?.data) {
+                const transformedReviews = response.data.map(item => ({
+                    id: item.id,
+                    customer_name: item.customer_name || item.user_name,
+                    service: item.service || item.service_name,
+                    rating: parseFloat(item.rating),
+                    comment: item.comment || item.review || item.feedback,
+                    date: item.date || item.created_at,
+                }));
+                setReviews(transformedReviews);
+            } else {
+                // Fallback to mock data
+                setReviews(mockReviewsData.data);
+            }
+        } catch (error) {
+            console.error('Error loading reviews:', error);
+            Alert.alert('Error', 'Failed to load reviews. Using local data.');
+            setReviews(mockReviewsData.data);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const onRefresh = () => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1000);
+        setCurrentPage(1);
+        loadReviews().finally(() => setRefreshing(false));
     };
 
     const renderStars = (rating) => {

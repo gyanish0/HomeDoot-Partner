@@ -8,45 +8,83 @@ import {
     SafeAreaView,
     Linking,
     Alert,
-    RefreshControl
+    RefreshControl,
+    ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { mockOrdersData } from '../data/mockData';
 import Colors from '../constants/Colors';
+import {
+    getVendorPendingOrders,
+    getVendorAssignedOrders,
+    getVendorCompletedOrders,
+    getVendorCancelledOrders,
+} from '../services/vendorService';
 
 const JobsScreen = () => {
     const [activeTab, setActiveTab] = useState('Upcoming');
     const [jobs, setJobs] = useState([]);
-    const [balance, setBalance] = useState(250);
-    const [notificationCount, setNotificationCount] = useState(4);
     const [refreshing, setRefreshing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(false);
 
-    // Load jobs from mock data
+    // Load jobs from API
     useEffect(() => {
         loadJobs();
-    }, []);
+    }, [activeTab]);
 
-    const loadJobs = () => {
-        // Transform mock orders data to jobs format
-        const transformedJobs = mockOrdersData.data.map(order => ({
-            id: order.id,
-            time: order.time,
-            customerName: order.customer_name,
-            location: order.address || 'Location not provided',
-            status: getStatusText(order.status),
-            statusColor: getStatusColor(order.status),
-            date: order.date,
-            type: order.status,
-            phone: order.phone || '+919876543210',
-            service: order.service,
-            amount: order.amount,
-            isRepeat: order.is_repeat || false
-        }));
-        setJobs(transformedJobs);
+    const loadJobs = async () => {
+        setLoading(true);
+        try {
+            let response;
+            const perPage = 20;
+
+            switch (activeTab.toLowerCase()) {
+                case 'pending':
+                    response = await getVendorPendingOrders(currentPage, perPage);
+                    break;
+                case 'upcoming':
+                    response = await getVendorAssignedOrders(currentPage, perPage);
+                    break;
+                case 'completed':
+                    response = await getVendorCompletedOrders(currentPage, perPage);
+                    break;
+                case 'cancelled':
+                    response = await getVendorCancelledOrders(currentPage, perPage);
+                    break;
+                default:
+                    response = await getVendorPendingOrders(currentPage, perPage);
+            }
+            console.log(response, 'responseresponseresponse')
+            if (response?.success && response?.data) {
+                const transformedJobs = response.data.map(order => ({
+                    id: order.id,
+                    time: order.time || order.created_at,
+                    customerName: order.customer_name || order.customer?.name,
+                    location: order.address || order.location || 'Location not provided',
+                    status: getStatusText(order.status),
+                    statusColor: getStatusColor(order.status),
+                    date: order.date || order.order_date,
+                    type: order.status,
+                    phone: order.phone || order.customer?.phone || '+919876543210',
+                    service: order.service || order.service_name,
+                    amount: order.amount || order.total_amount,
+                    isRepeat: order.is_repeat || false
+                }));
+                setJobs(transformedJobs);
+            }
+        } catch (error) {
+            console.error('Error loading jobs:', error);
+            Alert.alert('Error', 'Failed to load jobs.');
+            // Fallback to mock data
+        } finally {
+            setLoading(false);
+        }
     };
+
 
     const onRefresh = () => {
         setRefreshing(true);
+        setCurrentPage(1);
         loadJobs();
         setTimeout(() => setRefreshing(false), 1000);
     };
@@ -198,7 +236,12 @@ const JobsScreen = () => {
                     />
                 }
             >
-                {Object.keys(groupedJobs).length > 0 ? (
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                        <Text style={styles.loadingText}>Loading jobs...</Text>
+                    </View>
+                ) : Object.keys(groupedJobs).length > 0 ? (
                     Object.keys(groupedJobs).map(date => (
                         <View key={date} style={styles.dateSection}>
                             <Text style={styles.dateTitle}>{date}</Text>
@@ -399,6 +442,16 @@ const styles = StyleSheet.create({
     emptyStateText: {
         fontSize: 16,
         color: '#999',
+        marginTop: 12,
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
         marginTop: 12,
     },
     helpButton: {

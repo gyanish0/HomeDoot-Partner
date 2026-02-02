@@ -58,6 +58,9 @@ export const saveAuthToken = async (token) => {
     }
 };
 
+// Alias for saveAuthToken
+export const saveToken = saveAuthToken;
+
 /**
  * Get auth token
  * @returns {string|null} - Auth token or null
@@ -70,6 +73,9 @@ export const getAuthToken = async () => {
         return null;
     }
 };
+
+// Alias for getAuthToken
+export const getToken = getAuthToken;
 
 /**
  * Check if user is logged in

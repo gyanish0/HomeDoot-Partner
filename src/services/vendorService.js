@@ -3,7 +3,7 @@
  * Handles all vendor-related API calls
  */
 
-import { get, post, postMultipart } from './api';
+import axiosInstance from './axiosInstance';
 
 /**
  * Get states list
@@ -11,7 +11,7 @@ import { get, post, postMultipart } from './api';
  */
 export const getStates = async () => {
     try {
-        const response = await get('state');
+        const response = await axiosInstance.get('state');
         return response;
     } catch (error) {
         throw error;
@@ -25,14 +25,8 @@ export const getStates = async () => {
  */
 export const getCities = async (stateId) => {
     try {
-        const response = await post('city', null, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-        const url = `city?state_id=${stateId}`;
-        const citiesResponse = await post(url);
-        return citiesResponse;
+        const response = await axiosInstance.get(`city?state_id=${stateId}`);
+        return response;
     } catch (error) {
         throw error;
     }
@@ -44,7 +38,7 @@ export const getCities = async (stateId) => {
  */
 export const getCategories = async () => {
     try {
-        const response = await get('category');
+        const response = await axiosInstance.get('category');
         return response;
     } catch (error) {
         throw error;
@@ -81,7 +75,11 @@ export const uploadBusinessDetails = async (businessData) => {
             formData.append('hid_aadhar_proof', businessData.aadharProof);
         }
 
-        const response = await postMultipart('vendor-business-details', formData);
+        const response = await axiosInstance.post('vendor-business-details', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
         return response;
     } catch (error) {
         throw error;
@@ -107,7 +105,11 @@ export const uploadBankDetails = async (bankData) => {
             formData.append('cancelled_cheque', bankData.cancelledCheque);
         }
 
-        const response = await postMultipart('vendor-bank-details', formData);
+        const response = await axiosInstance.post('vendor-bank-details', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
         return response;
     } catch (error) {
         throw error;
@@ -121,7 +123,7 @@ export const uploadBankDetails = async (bankData) => {
  */
 export const getVendorDashboard = async (vendorId) => {
     try {
-        const response = await get(`vendor-dashboard?vendor_id=${vendorId}`);
+        const response = await axiosInstance.get(`vendor-dashboard?vendor_id=${vendorId}`);
         return response;
     } catch (error) {
         throw error;
@@ -139,7 +141,7 @@ export const getVendorOrders = async (vendorId, status = '') => {
         const url = status
             ? `vendor-order?vendor_id=${vendorId}&status=${status}`
             : `vendor-order?vendor_id=${vendorId}`;
-        const response = await post(url);
+        const response = await axiosInstance.post(url);
         return response;
     } catch (error) {
         throw error;
@@ -153,7 +155,7 @@ export const getVendorOrders = async (vendorId, status = '') => {
  */
 export const getVendorWallet = async (vendorId) => {
     try {
-        const response = await post(`vendor-wallet?vendor_id=${vendorId}`);
+        const response = await axiosInstance.post(`vendor-wallet?vendor_id=${vendorId}`);
         return response;
     } catch (error) {
         throw error;
@@ -167,7 +169,7 @@ export const getVendorWallet = async (vendorId) => {
  */
 export const getVendorReviews = async (vendorId) => {
     try {
-        const response = await post(`vendor-review?vendor_id=${vendorId}`);
+        const response = await axiosInstance.post(`vendor-review?vendor_id=${vendorId}`);
         return response;
     } catch (error) {
         throw error;
@@ -188,7 +190,147 @@ export const updateVendorProfile = async (profileData) => {
             }
         });
 
-        const response = await postMultipart('update_profile', formData);
+        const response = await axiosInstance.post('update_profile', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor pending orders with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with pending orders
+ */
+export const getVendorPendingOrders = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`orders/pending?page=${page}&per_page=${perPage}`);
+        console.log(response, '12345678');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor assigned orders with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with assigned orders
+ */
+export const getVendorAssignedOrders = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`orders/assigned?page=${page}&per_page=${perPage}`);
+        console.log(response, '12345678');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor completed orders with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with completed orders
+ */
+export const getVendorCompletedOrders = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`orders/completed`);
+        console.log(response, '12345678');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor cancelled orders with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with cancelled orders
+ */
+export const getVendorCancelledOrders = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`orders/cancelled?page=${page}&per_page=${perPage}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor ratings with pagination
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)`
+ * @returns {Promise} - API response with ratings
+ */
+export const getVendorRatings = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`ratings?page=${page}&per_page=${perPage}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor wallet credit transactions
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with credit transactions
+ */
+export const getVendorWalletCreditTransactions = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`vendor-wallet-transaction/credit?page=${page}&per_page=${perPage}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor wallet debit transactions
+ * @param {number} page - Page number (default: 1)
+ * @param {number} perPage - Items per page (default: 20)
+ * @returns {Promise} - API response with debit transactions
+ */
+export const getVendorWalletDebitTransactions = async (page = 1, perPage = 20) => {
+    try {
+        const response = await axiosInstance.get(`vendor-wallet-transaction/debit?page=${page}&per_page=${perPage}`);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor commission invoice for current month
+ * @returns {Promise} - API response with commission data
+ */
+export const getVendorCommissionCurrentMonth = async () => {
+    try {
+        const response = await axiosInstance.get('invoice/commission');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Get vendor commission invoice for custom date range
+ * @param {string} fromDate - Start date (YYYY-MM-DD format)
+ * @param {string} toDate - End date (YYYY-MM-DD format)
+ * @returns {Promise} - API response with commission data
+ */
+export const getVendorCommissionCustomRange = async (fromDate, toDate) => {
+    try {
+        const response = await axiosInstance.get(`invoice/commission?from_date=${fromDate}&to_date=${toDate}`);
         return response;
     } catch (error) {
         throw error;
@@ -206,4 +348,13 @@ export default {
     getVendorWallet,
     getVendorReviews,
     updateVendorProfile,
+    getVendorPendingOrders,
+    getVendorAssignedOrders,
+    getVendorCompletedOrders,
+    getVendorCancelledOrders,
+    getVendorRatings,
+    getVendorWalletCreditTransactions,
+    getVendorWalletDebitTransactions,
+    getVendorCommissionCurrentMonth,
+    getVendorCommissionCustomRange,
 };

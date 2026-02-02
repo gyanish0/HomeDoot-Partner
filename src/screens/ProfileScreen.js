@@ -2,11 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useAuth } from '../context/AuthContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { logoutUser } from '../store/slices/authSlice';
 import Colors from '../constants/Colors';
 
 const ProfileScreen = () => {
-    const { user, logout } = useAuth();
+    const dispatch = useDispatch();
+    const { user } = useSelector((state) => state.auth);
     const navigation = useNavigation();
 
     const menuItems = [
@@ -35,7 +37,12 @@ const ProfileScreen = () => {
                         text: 'Logout',
                         style: 'destructive',
                         onPress: async () => {
-                            await logout();
+                            try {
+                                await dispatch(logoutUser()).unwrap();
+                                Alert.alert('Success', 'You have been logged out successfully.');
+                            } catch (error) {
+                                console.error('Logout error:', error);
+                            }
                         },
                     },
                 ]
@@ -50,14 +57,14 @@ const ProfileScreen = () => {
             {/* Profile Header */}
             <View style={styles.profileHeader}>
                 <View style={styles.profileInfo}>
-                    <Text style={styles.profileName}>{user?.name || 'Aarti Singh'}</Text>
+                    <Text style={styles.profileName}>{user?.name || 'Not Available'}</Text>
                     <View style={styles.ratingContainer}>
                         <Icon name="star" size={16} color="#FFB800" />
                         <Text style={styles.ratingText}>4.81</Text>
                     </View>
                 </View>
                 <Image
-                    source={require('../assets/hdloginlogo.png')}
+                    source={user?.profile_photo_url ? { uri: user.profile_photo_url } : require('../assets/hdloginlogo.png')}
                     style={styles.profileImage}
                     resizeMode="cover"
                 />

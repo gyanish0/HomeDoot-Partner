@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useAuth } from '../context/AuthContext';
-import { mockDashboardData, mockOrdersData } from '../data/mockData';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDashboard } from '../store/slices/authSlice';
 import Colors from '../constants/Colors';
 
 const DashboardScreen = ({ navigation }) => {
-    const { user } = useAuth();
+    const dispatch = useDispatch();
+    const { user, dashboardData } = useSelector((state) => state.auth);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [todayJobs, setTodayJobs] = useState([]);
@@ -16,8 +17,15 @@ const DashboardScreen = ({ navigation }) => {
         loadDashboardData();
     }, []);
 
-    const loadDashboardData = () => {
-        // Mock today's jobs - replace with API call
+    const loadDashboardData = async () => {
+        try {
+            // Fetch dashboard data from API
+            await dispatch(fetchDashboard()).unwrap();
+        } catch (error) {
+            console.error('Dashboard load error:', error);
+        }
+
+        // Mock today's jobs - replace with actual data from dashboardData
         const mockTodayJobs = [
             {
                 id: 1,
