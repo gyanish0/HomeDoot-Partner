@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { getVendorBusinessDetails, updateVendorBusinessDetails } from '../services/vendorService';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const businessValidationSchema = Yup.object().shape({
     businessName: Yup.string().required('Business name is required'),
@@ -15,6 +17,8 @@ const businessValidationSchema = Yup.object().shape({
 
 const BusinessDetailsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
+    const [fetchingData, setFetchingData] = useState(true);
+    const [existingBusinessDetails, setExistingBusinessDetails] = useState(null);
     const [documents, setDocuments] = useState({
         gstFile: null,
         panFile: null,
@@ -37,17 +41,76 @@ const BusinessDetailsScreen = ({ navigation }) => {
         onSubmit: async (values) => {
             setLoading(true);
             try {
-                // Simulate API delay
-                await new Promise(resolve => setTimeout(resolve, 500));
+                const businessData = {
+                    businessName: values.businessName,
+                    contactPerson: values.contactPerson,
+                    mobile: values.mobile,
+                    businessAddress: values.businessAddress,
+                    gstDetails: values.gstDetails,
+                    panDetails: values.panDetails,
+                    aadharNumber: values.aadharNumber,
+                    gstFile: documents.gstFile,
+                    panFile: documents.panFile,
+                    udyogFile: documents.udyogFile,
+                    addressProof: documents.addressProof,
+                    aadharProof: documents.aadharProof,
+                };
 
-                setLoading(false);
-                Alert.alert('Success', 'Business details updated successfully!');
+                const response = await updateVendorBusinessDetails(businessData);
+
+                if (response.success) {
+                    Alert.alert('Success', response.message || 'Business details updated successfully!');
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', response.message || 'Failed to update business details');
+                }
             } catch (error) {
-                setLoading(false);
+                console.error('Business details update error:', error);
                 Alert.alert('Error', error.message || 'Failed to update business details');
+            } finally {
+                setLoading(false);
             }
         },
     });
+
+    // Fetch existing business details
+    useEffect(() => {
+        const fetchBusinessDetails = async () => {
+            try {
+                setFetchingData(true);
+                const response = await getVendorBusinessDetails();
+
+                console.log('Business details response:', response);
+
+                if (response.success && response.data) {
+                    const businessData = response.data;
+
+                    if (businessData) {
+                        setExistingBusinessDetails(businessData);
+
+                        // Populate form with existing data
+                        formik.setValues({
+                            businessName: businessData.business_name || '',
+                            contactPerson: businessData.contact_person || '',
+                            mobile: businessData.mobile || '',
+                            businessAddress: businessData.business_address || '',
+                            gstDetails: businessData.gst_details || '',
+                            panDetails: businessData.pan_details || '',
+                            aadharNumber: businessData.aadhar_number || '',
+                        });
+                    } else {
+                        console.log('No existing business details found - showing empty form');
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching business details:', error);
+            } finally {
+                setFetchingData(false);
+            }
+        };
+
+        fetchBusinessDetails();
+    }, []);
 
     const pickDocument = (documentType) => {
         const options = {
@@ -75,9 +138,29 @@ const BusinessDetailsScreen = ({ navigation }) => {
         });
     };
 
+    // Show loading state while fetching data
+    if (fetchingData) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#9C27B0" />
+                <Text style={styles.loadingText}>Loading business details...</Text>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {/* Show existing details status */}
+                {existingBusinessDetails && (
+                    <View style={styles.infoBox}>
+                        <Icon name="information" size={20} color="#9C27B0" />
+                        <Text style={styles.infoText}>
+                            Business details already added. You can update them below.
+                        </Text>
+                    </View>
+                )}
+
                 {/* Business Name - Full Width */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Business Name <Text style={styles.required}>*</Text></Text>
@@ -268,9 +351,9 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <>
-                            <Text style={styles.submitButtonText}>Update Business Details</Text>
-                        </>
+                        <Text style={styles.submitButtonText}>
+                            {existingBusinessDetails ? 'Update Business Details' : 'Save Business Details'}
+                        </Text>
                     )}
                 </TouchableOpacity>
             </ScrollView>
@@ -283,9 +366,34 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F5F5F5',
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#666',
+    },
     scrollContent: {
         padding: 16,
         paddingBottom: 40,
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3E5F5',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+        gap: 10,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#9C27B0',
     },
     inputContainer: {
         marginBottom: 16,

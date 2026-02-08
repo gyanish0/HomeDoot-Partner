@@ -1,70 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Image, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
+import { getVendorWalletCreditTransactions } from '../services/vendorService';
+import { useSelector } from 'react-redux';
 
 const WalletScreen = () => {
+    const { user } = useSelector((state) => state.auth);
     const navigation = useNavigation();
-    const [activeTab, setActiveTab] = useState('All');
-    const [balance, setBalance] = useState(250);
     const [transactions, setTransactions] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         loadTransactions();
     }, []);
 
-    const loadTransactions = () => {
-        // Mock transaction data - replace with actual API call
-        const mockTransactions = [
-            {
-                id: 1,
-                date: '22 Jan 2026, 05:49 PM',
-                type: 'Added from payout',
-                customer: '',
-                amount: 131,
-                isCredit: true,
-                category: 'recharge'
-            },
-            {
-                id: 2,
-                date: '22 Jan 2026, 04:16 PM',
-                type: 'Lead bought',
-                customer: 'pravin bhosale',
-                amount: 43,
-                isCredit: false,
-                category: 'expense'
-            },
-            {
-                id: 3,
-                date: '22 Jan 2026, 04:08 PM',
-                type: 'Lead Refund',
-                customer: 'Sumedha Sudhir',
-                amount: 41,
-                isCredit: true,
-                category: 'recharge'
-            },
-            {
-                id: 4,
-                date: '22 Jan 2026, 04:07 PM',
-                type: 'Lead bought',
-                customer: 'Sumedha Sudhir',
-                amount: 41,
-                isCredit: false,
-                category: 'expense'
-            },
-            {
-                id: 5,
-                date: '22 Jan 2026, 11:23 AM',
-                type: 'Lead bought',
-                customer: '',
-                amount: 88,
-                isCredit: false,
-                category: 'expense'
+    const loadTransactions = async () => {
+        setLoading(true);
+        try {
+            const perPage = 50;
+            const response = await getVendorWalletCreditTransactions(currentPage, perPage);
+            console.log(response, 'creditResponse')
+
+            if (response?.status && response?.data) {
+                const transformedTransactions = response.data.map(item => {
+                    const isCredit = item.payment_type === 'credit';
+                    const date = new Date(item.created_at);
+                    const formattedDate = date.toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+
+                    return {
+                        id: item.id,
+                        date: formattedDate,
+                        type: item.remark || (isCredit ? 'Commission' : 'Service charge'),
+                        customer: item.order_no,
+                        amount: `₹${parseFloat(item.amount).toFixed(2)}`,
+                        isCredit: isCredit,
+                        category: isCredit ? 'recharge' : 'expense',
+                    };
+                });
+
+                setTransactions(transformedTransactions);
             }
-        ];
-        setTransactions(mockTransactions);
+        } catch (error) {
+            console.error('Error loading transactions:', error);
+            Alert.alert('Error', 'Failed to load transactions.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const onRefresh = () => {
@@ -72,18 +61,6 @@ const WalletScreen = () => {
         loadTransactions();
         setTimeout(() => setRefreshing(false), 1000);
     };
-
-    const tabs = ['All', 'Recharges', 'Expenses', 'Penalties'];
-
-    const filterTransactions = () => {
-        if (activeTab === 'All') return transactions;
-        if (activeTab === 'Recharges') return transactions.filter(t => t.category === 'recharge');
-        if (activeTab === 'Expenses') return transactions.filter(t => t.category === 'expense');
-        if (activeTab === 'Penalties') return transactions.filter(t => t.category === 'penalty');
-        return transactions;
-    };
-
-    const filteredTransactions = filterTransactions();
 
     const renderTransaction = (transaction) => (
         <View key={transaction.id} style={styles.transactionItem}>
@@ -95,7 +72,7 @@ const WalletScreen = () => {
                 ) : null}
             </View>
             <Text style={[styles.transactionAmount, transaction.isCredit ? styles.creditAmount : styles.debitAmount]}>
-                {transaction.isCredit ? '+ ' : '- '}{transaction.amount} cr.
+                {transaction.isCredit ? '+ ' : '- '}{transaction.amount}
             </Text>
         </View>
     );
@@ -104,6 +81,7 @@ const WalletScreen = () => {
         <SafeAreaView style={styles.container}>
             <ScrollView
                 style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -113,11 +91,10 @@ const WalletScreen = () => {
                 }
             >
 
-
                 {/* Balance Section */}
                 <View style={styles.balanceSection}>
                     <View style={styles.balanceLeft}>
-                        <Text style={styles.balanceAmount}>{balance}</Text>
+                        <Text style={styles.balanceAmount}>{user.wallet}</Text>
                         <Text style={styles.balanceLabel}>Credit balance</Text>
                     </View>
                     <TouchableOpacity
@@ -128,27 +105,15 @@ const WalletScreen = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {tabs.map(tab => (
-                            <TouchableOpacity
-                                key={tab}
-                                style={[styles.tab, activeTab === tab && styles.activeTab]}
-                                onPress={() => setActiveTab(tab)}
-                            >
-                                <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                                    {tab}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
                 {/* Transactions List */}
                 <View style={styles.transactionsContainer}>
-                    {filteredTransactions.length > 0 ? (
-                        filteredTransactions.map(transaction => renderTransaction(transaction))
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={Colors.primary} />
+                            <Text style={styles.loadingText}>Loading transactions...</Text>
+                        </View>
+                    ) : transactions.length > 0 ? (
+                        transactions.map(transaction => renderTransaction(transaction))
                     ) : (
                         <View style={styles.emptyState}>
                             <Icon name="wallet-outline" size={64} color="#ccc" />
@@ -169,16 +134,6 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
-    headerSection: {
-        backgroundColor: 'linear-gradient(180deg, #B2EBF2 0%, #E0F7FA 100%)',
-        paddingTop: 20,
-        paddingBottom: 40,
-        alignItems: 'center',
-    },
-    illustrationContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     balanceSection: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -190,7 +145,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     balanceAmount: {
-        fontSize: 48,
+        fontSize: 28,
         fontWeight: '700',
         color: '#000',
         marginBottom: 4,
@@ -208,29 +163,6 @@ const styles = StyleSheet.create({
     addButtonText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: '600',
-    },
-    tabsContainer: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        paddingHorizontal: 16,
-    },
-    tab: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        marginRight: 8,
-    },
-    activeTab: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#000',
-    },
-    tabText: {
-        fontSize: 16,
-        color: '#999',
-        fontWeight: '500',
-    },
-    activeTabText: {
-        color: '#000',
         fontWeight: '600',
     },
     transactionsContainer: {
@@ -271,7 +203,7 @@ const styles = StyleSheet.create({
         color: '#4CAF50',
     },
     debitAmount: {
-        color: '#666',
+        color: '#F44336',
     },
     emptyState: {
         alignItems: 'center',
@@ -281,6 +213,16 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#999',
+        marginTop: 12,
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
         marginTop: 12,
     },
 });

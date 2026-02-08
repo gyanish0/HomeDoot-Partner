@@ -26,6 +26,7 @@ const LoginScreen = ({ navigation }) => {
                 if (result.status) {
                     navigation.navigate('Otp', {
                         mobileNumber: values.mobileNumber,
+                        otpMessage: result.message,
                         from: 'login'
                     });
                 } else {

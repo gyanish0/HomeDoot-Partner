@@ -18,6 +18,9 @@ import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsConditionsScreen from '../screens/TermsConditionsScreen';
 import RefundPolicyScreen from '../screens/RefundPolicyScreen';
 import NotificationScreen from '../screens/NotificationScreen';
+import WalletScreen from '../screens/WalletScreen';
+import VendorProfileExample from '../screens/VendorProfileExample';
+import EditProfileScreen from '../screens/EditProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -114,6 +117,21 @@ const RootNavigator = () => {
                         name="Notifications"
                         component={NotificationScreen}
                         options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                        name="Wallet"
+                        component={WalletScreen}
+                        options={{ headerShown: true, title: 'Credits' }}
+                    />
+                    <Stack.Screen
+                        name="ProfileDetails"
+                        component={VendorProfileExample}
+                        options={{ headerShown: true, title: 'Vendor Profile' }}
+                    />
+                    <Stack.Screen
+                        name="EditProfile"
+                        component={EditProfileScreen}
+                        options={{ headerShown: true, title: 'Edit Profile' }}
                     />
                 </>
             )}

@@ -1,14 +1,5 @@
-/**
- * Vendor/Partner API Service
- * Handles all vendor-related API calls
- */
-
 import axiosInstance from './axiosInstance';
 
-/**
- * Get states list
- * @returns {Promise} - API response with states
- */
 export const getStates = async () => {
     try {
         const response = await axiosInstance.get('state');
@@ -18,11 +9,6 @@ export const getStates = async () => {
     }
 };
 
-/**
- * Get cities by state ID
- * @param {number} stateId - State ID
- * @returns {Promise} - API response with cities
- */
 export const getCities = async (stateId) => {
     try {
         const response = await axiosInstance.get(`city?state_id=${stateId}`);
@@ -32,10 +18,6 @@ export const getCities = async (stateId) => {
     }
 };
 
-/**
- * Get categories list
- * @returns {Promise} - API response with categories
- */
 export const getCategories = async () => {
     try {
         const response = await axiosInstance.get('category');
@@ -45,11 +27,6 @@ export const getCategories = async () => {
     }
 };
 
-/**
- * Upload vendor business details
- * @param {object} businessData - Business details form data
- * @returns {Promise} - API response
- */
 export const uploadBusinessDetails = async (businessData) => {
     try {
         const formData = new FormData();
@@ -86,11 +63,6 @@ export const uploadBusinessDetails = async (businessData) => {
     }
 };
 
-/**
- * Upload vendor bank details
- * @param {object} bankData - Bank details form data
- * @returns {Promise} - API response
- */
 export const uploadBankDetails = async (bankData) => {
     try {
         const formData = new FormData();
@@ -116,11 +88,6 @@ export const uploadBankDetails = async (bankData) => {
     }
 };
 
-/**
- * Get vendor dashboard data
- * @param {string} vendorId - Vendor ID
- * @returns {Promise} - API response with dashboard data
- */
 export const getVendorDashboard = async (vendorId) => {
     try {
         const response = await axiosInstance.get(`vendor-dashboard?vendor_id=${vendorId}`);
@@ -130,12 +97,6 @@ export const getVendorDashboard = async (vendorId) => {
     }
 };
 
-/**
- * Get vendor orders
- * @param {string} vendorId - Vendor ID
- * @param {string} status - Order status (pending, completed, etc.)
- * @returns {Promise} - API response with orders
- */
 export const getVendorOrders = async (vendorId, status = '') => {
     try {
         const url = status
@@ -148,11 +109,6 @@ export const getVendorOrders = async (vendorId, status = '') => {
     }
 };
 
-/**
- * Get vendor wallet details
- * @param {string} vendorId - Vendor ID
- * @returns {Promise} - API response with wallet data
- */
 export const getVendorWallet = async (vendorId) => {
     try {
         const response = await axiosInstance.post(`vendor-wallet?vendor_id=${vendorId}`);
@@ -162,11 +118,6 @@ export const getVendorWallet = async (vendorId) => {
     }
 };
 
-/**
- * Get vendor reviews/ratings
- * @param {string} vendorId - Vendor ID
- * @returns {Promise} - API response with reviews
- */
 export const getVendorReviews = async (vendorId) => {
     try {
         const response = await axiosInstance.post(`vendor-review?vendor_id=${vendorId}`);
@@ -176,85 +127,94 @@ export const getVendorReviews = async (vendorId) => {
     }
 };
 
-/**
- * Update vendor profile
- * @param {object} profileData - Profile data
- * @returns {Promise} - API response
- */
 export const updateVendorProfile = async (profileData) => {
     try {
         const formData = new FormData();
-        Object.keys(profileData).forEach(key => {
-            if (profileData[key] !== null && profileData[key] !== undefined) {
-                formData.append(key, profileData[key]);
-            }
-        });
 
-        const response = await axiosInstance.post('update_profile', formData, {
+        // Add required fields
+        formData.append('profile_guard', 'vendor');
+        formData.append('role_id', '3');
+
+        // Add profile fields
+        if (profileData.emp_id) formData.append('emp_id', profileData.emp_id);
+        if (profileData.name) formData.append('name', profileData.name);
+        if (profileData.email) formData.append('email', profileData.email);
+        if (profileData.mobile) formData.append('mobile', profileData.mobile);
+        if (profileData.address) formData.append('address', profileData.address);
+        if (profileData.state) formData.append('state', profileData.state);
+        if (profileData.city) formData.append('city', profileData.city);
+        if (profileData.pincode) formData.append('pincode', profileData.pincode);
+        if (profileData.category) formData.append('category', profileData.category);
+
+        // Add optional fields
+        if (profileData.date_range) formData.append('date_range', profileData.date_range);
+        if (profileData.non_availability_from) formData.append('non_availability_from', profileData.non_availability_from);
+        if (profileData.non_availability_to) formData.append('non_availability_to', profileData.non_availability_to);
+
+        // Add sub categories as array
+        if (profileData.sub_category && Array.isArray(profileData.sub_category)) {
+            profileData.sub_category.forEach(subCat => {
+                formData.append('sub_category[]', subCat);
+            });
+        }
+
+        // Add profile photo if provided
+        if (profileData.profile_photo) {
+            formData.append('profile_photo_path', {
+                uri: profileData.profile_photo.uri,
+                type: profileData.profile_photo.type || 'image/jpeg',
+                name: profileData.profile_photo.name || 'profile.jpg',
+            });
+            formData.append('hid_profile_photo_path', profileData.profile_photo.name || 'profile.jpg');
+        }
+
+        // Add password fields if provided (for password change)
+        if (profileData.password) {
+            formData.append('password', profileData.password);
+            formData.append('password_confirmation', profileData.password);
+        }
+
+        console.log('📤 Updating vendor profile');
+
+        const response = await axiosInstance.post('profile/update', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
         });
         return response;
     } catch (error) {
+        console.error('Error updating profile:', error);
         throw error;
     }
 };
 
-/**
- * Get vendor pending orders with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with pending orders
- */
 export const getVendorPendingOrders = async (page = 1, perPage = 20) => {
     try {
         const response = await axiosInstance.get(`orders/pending?page=${page}&per_page=${perPage}`);
-        console.log(response, '12345678');
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-/**
- * Get vendor assigned orders with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with assigned orders
- */
 export const getVendorAssignedOrders = async (page = 1, perPage = 20) => {
     try {
         const response = await axiosInstance.get(`orders/assigned?page=${page}&per_page=${perPage}`);
-        console.log(response, '12345678');
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-/**
- * Get vendor completed orders with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with completed orders
- */
 export const getVendorCompletedOrders = async (page = 1, perPage = 20) => {
     try {
         const response = await axiosInstance.get(`orders/completed`);
-        console.log(response, '12345678');
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-/**
- * Get vendor cancelled orders with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with cancelled orders
- */
 export const getVendorCancelledOrders = async (page = 1, perPage = 20) => {
     try {
         const response = await axiosInstance.get(`orders/cancelled?page=${page}&per_page=${perPage}`);
@@ -264,12 +224,6 @@ export const getVendorCancelledOrders = async (page = 1, perPage = 20) => {
     }
 };
 
-/**
- * Get vendor ratings with pagination
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)`
- * @returns {Promise} - API response with ratings
- */
 export const getVendorRatings = async (page = 1, perPage = 20) => {
     try {
         const response = await axiosInstance.get(`ratings?page=${page}&per_page=${perPage}`);
@@ -279,40 +233,24 @@ export const getVendorRatings = async (page = 1, perPage = 20) => {
     }
 };
 
-/**
- * Get vendor wallet credit transactions
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with credit transactions
- */
 export const getVendorWalletCreditTransactions = async (page = 1, perPage = 20) => {
     try {
-        const response = await axiosInstance.get(`vendor-wallet-transaction/credit?page=${page}&per_page=${perPage}`);
+        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/vendor-wallet-transaction/credit?page=${page}&per_page=${perPage}`);
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-/**
- * Get vendor wallet debit transactions
- * @param {number} page - Page number (default: 1)
- * @param {number} perPage - Items per page (default: 20)
- * @returns {Promise} - API response with debit transactions
- */
 export const getVendorWalletDebitTransactions = async (page = 1, perPage = 20) => {
     try {
-        const response = await axiosInstance.get(`vendor-wallet-transaction/debit?page=${page}&per_page=${perPage}`);
+        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/vendor-wallet-transaction/debit?page=${page}&per_page=${perPage}`);
         return response;
     } catch (error) {
         throw error;
     }
 };
 
-/**
- * Get vendor commission invoice for current month
- * @returns {Promise} - API response with commission data
- */
 export const getVendorCommissionCurrentMonth = async () => {
     try {
         const response = await axiosInstance.get('invoice/commission');
@@ -322,17 +260,197 @@ export const getVendorCommissionCurrentMonth = async () => {
     }
 };
 
-/**
- * Get vendor commission invoice for custom date range
- * @param {string} fromDate - Start date (YYYY-MM-DD format)
- * @param {string} toDate - End date (YYYY-MM-DD format)
- * @returns {Promise} - API response with commission data
- */
 export const getVendorCommissionCustomRange = async (fromDate, toDate) => {
     try {
         const response = await axiosInstance.get(`invoice/commission?from_date=${fromDate}&to_date=${toDate}`);
         return response;
     } catch (error) {
+        throw error;
+    }
+};
+
+export const getVendorProfile = async () => {
+    try {
+        const response = await axiosInstance.get('profile');
+        return response;
+    } catch (error) {
+        console.error('📡 Vendor profile API error:', error);
+        throw error;
+    }
+};
+
+export const getVendorBankDetails = async () => {
+    try {
+        const response = await axiosInstance.get('bank');
+        return response;
+    } catch (error) {
+        console.error('Error fetching bank details:', error);
+        throw error;
+    }
+};
+
+export const updateVendorBankDetails = async (bankData) => {
+    try {
+        const formData = new FormData();
+
+        // Add all required fields - ensure strings are properly formatted
+        formData.append('account_number', String(bankData.accountNumber || ''));
+        formData.append('bank_name', String(bankData.bankName || ''));
+        formData.append('branch_name', String(bankData.branchName || ''));
+        formData.append('ifsc_code', String(bankData.ifscCode || '').toUpperCase());
+
+        // Add cheque file if provided
+        if (bankData.cancelledCheque) {
+            formData.append('cheque_file', {
+                uri: bankData.cancelledCheque.uri,
+                type: bankData.cancelledCheque.type || 'image/jpeg',
+                name: bankData.cancelledCheque.name || 'cheque.jpg',
+            });
+            // Add hidden field with filename
+            formData.append('hid_cheque_file', bankData.cancelledCheque.name || 'cheque.jpg');
+        }
+
+        console.log('📤 Sending bank details update:', {
+            accountNumber: bankData.accountNumber,
+            bankName: bankData.bankName,
+            branchName: bankData.branchName,
+            ifscCode: bankData.ifscCode,
+            hasChequeFile: !!bankData.cancelledCheque,
+            approval: '0',
+        });
+
+        const response = await axiosInstance.post('bank/update', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error('Error updating bank details:', error);
+
+        // Improve error message for server errors
+        if (error.response?.status === 500) {
+            throw new Error('Server error occurred. Please contact support or try again later.');
+        }
+
+        throw error;
+    }
+};
+
+export const getVendorBusinessDetails = async () => {
+    try {
+        const response = await axiosInstance.get('business-details');
+        return response;
+    } catch (error) {
+        console.error('Error fetching business details:', error);
+        throw error;
+    }
+};
+
+export const updateVendorBusinessDetails = async (businessData) => {
+    try {
+        const formData = new FormData();
+
+        // Add text fields
+        if (businessData.businessName) formData.append('business_name', businessData.businessName);
+        if (businessData.contactPerson) formData.append('contact_person', businessData.contactPerson);
+        if (businessData.mobile) formData.append('contact_mobile', businessData.mobile);
+        if (businessData.businessAddress) formData.append('business_address', businessData.businessAddress);
+        if (businessData.gstDetails) formData.append('gst_details', businessData.gstDetails);
+        if (businessData.panDetails) formData.append('pan_details', businessData.panDetails);
+        if (businessData.aadharNumber) formData.append('aadhar_details', businessData.aadharNumber);
+
+        // Add GST file with _val field
+        if (businessData.gstFile) {
+            const gstFileData = {
+                uri: businessData.gstFile.uri,
+                type: businessData.gstFile.type || 'image/jpeg',
+                name: businessData.gstFile.name || 'gst_file.jpg',
+            };
+            formData.append('gst_file', gstFileData);
+            formData.append('gst_file_val', gstFileData.name);
+        }
+
+        // Add PAN file with _val field
+        if (businessData.panFile) {
+            const panFileData = {
+                uri: businessData.panFile.uri,
+                type: businessData.panFile.type || 'image/jpeg',
+                name: businessData.panFile.name || 'pan_file.jpg',
+            };
+            formData.append('pan_file', panFileData);
+            formData.append('pan_file_val', panFileData.name);
+        }
+
+        // Add TAN file with _val field (previously udyogFile)
+        if (businessData.udyogFile) {
+            const tanFileData = {
+                uri: businessData.udyogFile.uri,
+                type: businessData.udyogFile.type || 'image/jpeg',
+                name: businessData.udyogFile.name || 'tan_file.jpg',
+            };
+            formData.append('tan_file', tanFileData);
+            formData.append('tan_file_val', tanFileData.name);
+        }
+
+        // Add Address Proof with _val field
+        if (businessData.addressProof) {
+            const addressProofData = {
+                uri: businessData.addressProof.uri,
+                type: businessData.addressProof.type || 'image/jpeg',
+                name: businessData.addressProof.name || 'address_proof.jpg',
+            };
+            formData.append('address_proof', addressProofData);
+            formData.append('address_proof_val', addressProofData.name);
+        }
+
+        // Add Aadhar Proof (front) with _val field
+        if (businessData.aadharProof) {
+            const aadharProofData = {
+                uri: businessData.aadharProof.uri,
+                type: businessData.aadharProof.type || 'image/jpeg',
+                name: businessData.aadharProof.name || 'aadhar_proof.jpg',
+            };
+            formData.append('aadhar_proof', aadharProofData);
+            formData.append('aadhar_proof_val', aadharProofData.name);
+        }
+
+        // Add Aadhar Back with _val field
+        if (businessData.aadharBack) {
+            const aadharBackData = {
+                uri: businessData.aadharBack.uri,
+                type: businessData.aadharBack.type || 'image/jpeg',
+                name: businessData.aadharBack.name || 'aadhar_back.jpg',
+            };
+            formData.append('aadhar_back', aadharBackData);
+            formData.append('aadhar_back_val', aadharBackData.name);
+        }
+
+        console.log('📤 Sending business details update:', {
+            businessName: businessData.businessName,
+            contactPerson: businessData.contactPerson,
+            contactMobile: businessData.mobile,
+            hasGstFile: !!businessData.gstFile,
+            hasPanFile: !!businessData.panFile,
+            hasTanFile: !!businessData.udyogFile,
+            hasAddressProof: !!businessData.addressProof,
+            hasAadharProof: !!businessData.aadharProof,
+            hasAadharBack: !!businessData.aadharBack,
+        });
+
+        const response = await axiosInstance.post('update-business', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response;
+    } catch (error) {
+        console.error('Error updating business details:', error);
+
+        if (error.response?.status === 500) {
+            throw new Error('Server error occurred. Please contact support or try again later.');
+        }
+
         throw error;
     }
 };
@@ -357,4 +475,9 @@ export default {
     getVendorWalletDebitTransactions,
     getVendorCommissionCurrentMonth,
     getVendorCommissionCustomRange,
+    getVendorProfile,
+    getVendorBankDetails,
+    updateVendorBankDetails,
+    getVendorBusinessDetails,
+    updateVendorBusinessDetails,
 };

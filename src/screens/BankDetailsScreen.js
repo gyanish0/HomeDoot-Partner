@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { mockUserData } from '../data/mockData';
-import { getValue } from '../utils/storage';
-import { useAuth } from '../context/AuthContext';
+import { getVendorBankDetails, updateVendorBankDetails } from '../services/vendorService';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const bankValidationSchema = Yup.object().shape({
-    accountHolderName: Yup.string().required('Account holder name is required'),
+    // accountHolderName: Yup.string().required('Account holder name is required'),
     accountNumber: Yup.string().required('Account number is required'),
     ifscCode: Yup.string().matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code').required('IFSC code is required'),
     bankName: Yup.string().required('Bank name is required'),
@@ -17,12 +16,13 @@ const bankValidationSchema = Yup.object().shape({
 
 const BankDetailsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
+    const [fetchingData, setFetchingData] = useState(true);
     const [cancelledCheque, setCancelledCheque] = useState(null);
-    const { login } = useAuth();
+    const [existingBankDetails, setExistingBankDetails] = useState(null);
 
     const formik = useFormik({
         initialValues: {
-            accountHolderName: '',
+            // accountHolderName: '',
             accountNumber: '',
             ifscCode: '',
             bankName: '',
@@ -32,27 +32,77 @@ const BankDetailsScreen = ({ navigation }) => {
         onSubmit: async (values) => {
             setLoading(true);
             try {
-                const vendorId = await getValue('vendor_id');
-                if (!vendorId) {
-                    Alert.alert('Error', 'Vendor ID not found. Please register again.');
+                // Validate that cheque file is uploaded
+                if (!cancelledCheque) {
+                    Alert.alert('Required', 'Please upload a cancelled cheque image');
                     setLoading(false);
                     return;
                 }
 
-                // Simulate API delay
-                await new Promise(resolve => setTimeout(resolve, 500));
+                const bankData = {
+                    // accountHolderName: values.accountHolderName,
+                    accountNumber: values.accountNumber,
+                    ifscCode: values.ifscCode.toUpperCase(),
+                    bankName: values.bankName,
+                    branchName: values.branchName,
+                    cancelledCheque: cancelledCheque,
+                };
 
-                // Use mock response and login
-                await login(mockUserData);
-                setLoading(false);
+                const response = await updateVendorBankDetails(bankData);
 
-                Alert.alert('Success', 'Registration completed successfully!');
+                if (response.success) {
+                    Alert.alert('Success', response.message || 'Bank details updated successfully!');
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', response.message || 'Failed to update bank details');
+                }
             } catch (error) {
+                console.error('Bank details update error:', error);
+                Alert.alert('Error', error.message || 'Failed to update bank details');
+            } finally {
                 setLoading(false);
-                Alert.alert('Error', error.message || 'Failed to save bank details');
             }
         },
     });
+
+    // Fetch existing bank details
+    useEffect(() => {
+        const fetchBankDetails = async () => {
+            try {
+                setFetchingData(true);
+                const response = await getVendorBankDetails();
+
+                console.log('Bank details response:', response);
+
+                if (response.success && response.data) {
+                    const bankData = response.data.bank;
+
+                    // Check if bank data exists (not null)
+                    if (bankData) {
+                        setExistingBankDetails(bankData);
+
+                        // Populate form with existing data
+                        formik.setValues({
+                            // accountHolderName: bankData.account_holder_name || '',
+                            accountNumber: bankData.account_number || '',
+                            ifscCode: bankData.ifsc_code || '',
+                            bankName: bankData.bank_name || '',
+                            branchName: bankData.branch_name || '',
+                        });
+                    } else {
+                        console.log('No existing bank details found - showing empty form');
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching bank details:', error);
+                // Don't show error for first time users who don't have bank details yet
+            } finally {
+                setFetchingData(false);
+            }
+        };
+
+        fetchBankDetails();
+    }, []);
 
     const pickChequeImage = () => {
         const options = {
@@ -82,35 +132,40 @@ const BankDetailsScreen = ({ navigation }) => {
         });
     };
 
-    const handleSkip = async () => {
-        Alert.alert(
-            'Skip Bank Details',
-            'You can add bank details later from your profile. Continue?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Continue',
-                    onPress: async () => {
-                        const vendorId = await getValue('vendor_id');
-                        await login({ id: vendorId });
-                        navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'Home' }],
-                        });
-                    }
-                }
-            ]
-        );
+    const handleSkip = () => {
+        navigation.goBack();
     };
+
+    // Show loading state while fetching data
+    if (fetchingData) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#B91C4F" />
+                <Text style={styles.loadingText}>Loading bank details...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.title}>Bank Details</Text>
-                <Text style={styles.subtitle}>Add your bank account for payments</Text>
+                <Text style={styles.subtitle}>
+                    {existingBankDetails ? 'Update your bank account details' : 'Add your bank account for payments'}
+                </Text>
+
+                {/* Show existing bank status */}
+                {existingBankDetails && (
+                    <View style={styles.infoBox}>
+                        <Icon name="information" size={20} color="#B91C4F" />
+                        <Text style={styles.infoText}>
+                            Bank account already added. You can update the details below.
+                        </Text>
+                    </View>
+                )}
 
                 {/* Account Holder Name */}
-                <View style={styles.inputContainer}>
+                {/* <View style={styles.inputContainer}>
                     <Text style={styles.label}>Account Holder Name *</Text>
                     <TextInput
                         style={styles.input}
@@ -122,7 +177,7 @@ const BankDetailsScreen = ({ navigation }) => {
                     {formik.touched.accountHolderName && formik.errors.accountHolderName && (
                         <Text style={styles.errorText}>{formik.errors.accountHolderName}</Text>
                     )}
-                </View>
+                </View> */}
 
                 {/* Account Number */}
                 <View style={styles.inputContainer}>
@@ -189,9 +244,9 @@ const BankDetailsScreen = ({ navigation }) => {
 
                 {/* Cancelled Cheque Upload */}
                 <View style={styles.documentContainer}>
-                    <Text style={styles.label}>Cancelled Cheque (Optional)</Text>
+                    <Text style={styles.label}>Cancelled Cheque *</Text>
                     <TouchableOpacity
-                        style={styles.uploadButton}
+                        style={[styles.uploadButton, !cancelledCheque && styles.uploadButtonError]}
                         onPress={pickChequeImage}
                     >
                         <Text style={styles.uploadButtonText}>
@@ -200,6 +255,9 @@ const BankDetailsScreen = ({ navigation }) => {
                     </TouchableOpacity>
                     {cancelledCheque && (
                         <Text style={styles.fileName}>{cancelledCheque.name}</Text>
+                    )}
+                    {!cancelledCheque && (
+                        <Text style={styles.errorText}>Cheque image is required</Text>
                     )}
                 </View>
 
@@ -212,16 +270,20 @@ const BankDetailsScreen = ({ navigation }) => {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.submitButtonText}>COMPLETE REGISTRATION</Text>
+                        <Text style={styles.submitButtonText}>
+                            {existingBankDetails ? 'UPDATE BANK DETAILS' : 'SAVE BANK DETAILS'}
+                        </Text>
                     )}
                 </TouchableOpacity>
 
-                {/* Skip Button */}
+                {/* Cancel/Back Button */}
                 <TouchableOpacity
                     style={styles.skipButton}
                     onPress={handleSkip}
                 >
-                    <Text style={styles.skipButtonText}>Skip for now</Text>
+                    <Text style={styles.skipButtonText}>
+                        {existingBankDetails ? 'Cancel' : 'Skip for now'}
+                    </Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -232,6 +294,17 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#666',
     },
     scrollContent: {
         padding: 20,
@@ -246,8 +319,22 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         color: '#666',
-        marginBottom: 30,
+        marginBottom: 20,
         textAlign: 'center',
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF5F9',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 20,
+        gap: 10,
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#B91C4F',
     },
     inputContainer: {
         marginBottom: 20,
@@ -282,7 +369,10 @@ const styles = StyleSheet.create({
         borderColor: '#B91C4F',
         borderRadius: 12,
         paddingVertical: 12,
-        alignItems: 'center',
+        alignIteError: {
+            borderColor: '#ff4444',
+        },
+        uploadButtonms: 'center',
         backgroundColor: '#fff',
     },
     uploadButtonText: {

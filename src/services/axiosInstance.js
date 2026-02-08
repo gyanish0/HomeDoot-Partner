@@ -7,7 +7,7 @@ import axios from 'axios';
 import { getToken } from '../utils/storage';
 
 // Base API URL
-const BASE_URL = 'https://doot.globleitsolutions.com/api/vendor';
+const BASE_URL = 'https://doot.globleitsolutions.com/api/vendor/';
 
 // Create axios instance with React Native compatible configuration
 const axiosInstance = axios.create({

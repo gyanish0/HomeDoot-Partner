@@ -1,20 +1,39 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../store/slices/authSlice';
+import { fetchVendorProfile, selectVendor, selectVendorLoading } from '../store/slices/vendorSlice';
 import Colors from '../constants/Colors';
 
 const ProfileScreen = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
+    const vendor = useSelector(selectVendor);
+    const loading = useSelector(selectVendorLoading);
+    const error = useSelector((state) => state.vendor.error);
     const navigation = useNavigation();
+
+    // Fetch vendor profile on mount
+    useEffect(() => {
+        dispatch(fetchVendorProfile())
+            .unwrap()
+            .then((data) => {
+            })
+            .catch((err) => {
+                Alert.alert('Error', `Failed to load profile: ${err}`);
+            });
+    }, [dispatch]);
+
+    // Use vendor data if available, fallback to user data
+    const profileData = vendor || user;
 
     const menuItems = [
         { label: 'Calendar', icon: 'calendar', screen: 'Calendar' },
         { label: 'Job history', icon: 'briefcase-outline', screen: 'JobHistory' },
         { label: 'My Hub', icon: 'map-marker-radius', screen: 'MyHub' },
+        { label: 'Credits', icon: 'wallet', screen: 'Wallet', badge: vendor?.wallet ? `₹${vendor.wallet.toFixed(2)}` : null, badgeColor: Colors.primary },
         { label: 'Commission', icon: 'cash', screen: 'Commission' },
         { label: 'Rating & Reviews', icon: 'star-outline', screen: 'RatingReview' },
         { label: 'Business Details', icon: 'office-building', screen: 'BusinessDetails' },
@@ -54,17 +73,40 @@ const ProfileScreen = () => {
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            {/* Loading indicator */}
+            {loading && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Loading profile...</Text>
+                </View>
+            )}
+
+            {/* Error display */}
+            {error && !loading && (
+                <View style={styles.errorContainer}>
+                    <Icon name="alert-circle" size={24} color="#FF3B30" />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => dispatch(fetchVendorProfile())}
+                    >
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Profile Header */}
             <View style={styles.profileHeader}>
                 <View style={styles.profileInfo}>
-                    <Text style={styles.profileName}>{user?.name || 'Not Available'}</Text>
+                    <Text style={styles.profileName}>{profileData?.name || 'Not Available'}</Text>
+                    <Text style={styles.empId}>{vendor?.emp_id || 'Employee ID'}</Text>
                     <View style={styles.ratingContainer}>
                         <Icon name="star" size={16} color="#FFB800" />
                         <Text style={styles.ratingText}>4.81</Text>
                     </View>
                 </View>
                 <Image
-                    source={user?.profile_photo_url ? { uri: user.profile_photo_url } : require('../assets/hdloginlogo.png')}
+                    source={profileData?.profile_photo_url ? { uri: profileData.profile_photo_url } : require('../assets/hdloginlogo.png')}
                     style={styles.profileImage}
                     resizeMode="cover"
                 />
@@ -72,7 +114,7 @@ const ProfileScreen = () => {
 
             {/* Profile Actions */}
             <View style={styles.profileActions}>
-                <TouchableOpacity style={styles.actionButton}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileDetails')}>
                     <Text style={styles.actionButtonText}>Profile</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButton}>
@@ -118,6 +160,42 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#666',
+    },
+    errorContainer: {
+        margin: 20,
+        padding: 16,
+        backgroundColor: '#FFF5F5',
+        borderRadius: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFC0C0',
+    },
+    errorText: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#FF3B30',
+        textAlign: 'center',
+    },
+    retryButton: {
+        marginTop: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        backgroundColor: Colors.primary,
+        borderRadius: 6,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
     profileHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -132,6 +210,11 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: '700',
         color: '#000',
+        marginBottom: 4,
+    },
+    empId: {
+        fontSize: 14,
+        color: '#666',
         marginBottom: 8,
     },
     ratingContainer: {
@@ -149,6 +232,21 @@ const styles = StyleSheet.create({
         height: 100,
         borderRadius: 12,
         backgroundColor: '#f0f0f0',
+    },
+    profileDetails: {
+        paddingHorizontal: 20,
+        paddingBottom: 12,
+        gap: 8,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    detailText: {
+        fontSize: 14,
+        color: '#666',
+        flex: 1,
     },
     profileActions: {
         flexDirection: 'row',

@@ -48,7 +48,6 @@ const CommissionScreen = () => {
             } else {
                 response = await getVendorCommissionCurrentMonth();
             }
-
             if (response?.success && response?.data) {
                 setCommissionData(response.data);
             } else {

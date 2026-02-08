@@ -1,15 +1,5 @@
-/**
- * Authentication API Service
- * Handles all authentication-related API calls
- */
-
 import axiosInstance from './axiosInstance';
 
-/**
- * Send OTP to mobile number for login
- * @param {string} mobile - Mobile number
- * @returns {Promise} - API response with OTP sent status
- */
 export const sendOTP = async (mobile) => {
     try {
         const response = await axiosInstance.post('/send-otp', {
@@ -22,12 +12,6 @@ export const sendOTP = async (mobile) => {
     }
 };
 
-/**
- * Verify OTP and login
- * @param {string} mobile - Mobile number
- * @param {string} otp - OTP code
- * @returns {Promise} - API response with user data and token
- */
 export const verifyOTP = async (mobile, otp) => {
     try {
         const response = await axiosInstance.post('/verify-otp', {
@@ -41,10 +25,6 @@ export const verifyOTP = async (mobile, otp) => {
     }
 };
 
-/**
- * Get Vendor Dashboard Data (Protected Route)
- * @returns {Promise} - API response with dashboard data
- */
 export const getDashboard = async () => {
     try {
         const response = await axiosInstance.get('/dashboard');
@@ -69,16 +49,9 @@ export const logout = async () => {
     }
 };
 
-// Legacy methods for backward compatibility
 export const sendLoginOtp = sendOTP;
 export const verifyLoginOtp = verifyOTP;
 
-/**
- * Traditional login with username and password (keeping for backward compatibility)
- * @param {string} username - Username/Email
- * @param {string} password - Password
- * @returns {Promise} - API response with user data
- */
 export const loginWithPassword = async (username, password) => {
     try {
         const response = await postWithQuery('login', {
@@ -92,11 +65,6 @@ export const loginWithPassword = async (username, password) => {
     }
 };
 
-/**
- * Send OTP for registration
- * @param {object} registrationData - Registration form data
- * @returns {Promise} - API response with verification code
- */
 export const sendRegistrationOtp = async (registrationData) => {
     try {
         const response = await post('user-register', {
@@ -118,11 +86,6 @@ export const sendRegistrationOtp = async (registrationData) => {
     }
 };
 
-/**
- * Complete registration after OTP verification
- * @param {object} registrationData - Registration form data with OTP
- * @returns {Promise} - API response with user data
- */
 export const completeRegistration = async (registrationData) => {
     try {
         const response = await post('user-register', {
@@ -146,11 +109,6 @@ export const completeRegistration = async (registrationData) => {
     }
 };
 
-/**
- * Forgot password
- * @param {string} username - Username/Email
- * @returns {Promise} - API response
- */
 export const forgotPassword = async (username) => {
     try {
         const response = await postWithQuery('forgot_password', {
@@ -163,13 +121,6 @@ export const forgotPassword = async (username) => {
     }
 };
 
-/**
- * Update password
- * @param {string} username - Username/Email
- * @param {string} password - New password
- * @param {string} confirmPassword - Confirm password
- * @returns {Promise} - API response
- */
 export const updatePassword = async (username, password, confirmPassword) => {
     try {
         const response = await postWithQuery('update_password', {

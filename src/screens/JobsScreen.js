@@ -54,22 +54,61 @@ const JobsScreen = () => {
                 default:
                     response = await getVendorPendingOrders(currentPage, perPage);
             }
-            console.log(response, 'responseresponseresponse')
-            if (response?.success && response?.data) {
-                const transformedJobs = response.data.map(order => ({
-                    id: order.id,
-                    time: order.time || order.created_at,
-                    customerName: order.customer_name || order.customer?.name,
-                    location: order.address || order.location || 'Location not provided',
-                    status: getStatusText(order.status),
-                    statusColor: getStatusColor(order.status),
-                    date: order.date || order.order_date,
-                    type: order.status,
-                    phone: order.phone || order.customer?.phone || '+919876543210',
-                    service: order.service || order.service_name,
-                    amount: order.amount || order.total_amount,
-                    isRepeat: order.is_repeat || false
-                }));
+            if (response?.status && response?.data) {
+                const transformedJobs = response.data.data.map(order => {
+                    // Format time from service_time (24-hour format)
+                    const serviceHour = parseInt(order.service_time);
+                    const timeString = serviceHour ?
+                        `${serviceHour > 12 ? serviceHour - 12 : serviceHour === 12 ? 12 : serviceHour}:00 ${serviceHour >= 12 ? 'PM' : 'AM'}` :
+                        'Time not set';
+
+                    // Get customer name - handle both nested and flattened structures
+                    let customerName, phone, location, houseNo, locality;
+
+                    if (activeTab.toLowerCase() === 'pending') {
+                        // Pending orders have nested structure
+                        customerName = order.final_address?.first_name || order.customers?.name || 'Customer';
+                        phone = order.final_address?.phone || order.customers?.mobile || '';
+                        location = order.final_address?.address1 || order.address || 'Location not provided';
+                        houseNo = order.other_address?.other_house_no || '';
+                        locality = order.final_address?.locality || order.other_address?.other_locality || '';
+                    } else {
+                        // Assigned/Completed/Cancelled orders have flattened structure
+                        customerName = order.other_first_name || order.user_name || 'Customer';
+                        phone = order.other_mobile_no || order.user_mobile || '';
+                        location = order.other_address1 || order.address || 'Location not provided';
+                        houseNo = order.other_house_no || '';
+                        locality = order.other_locality || '';
+                    }
+
+                    // Get service name from items
+                    const serviceName = order.items?.[0]?.products?.service_name || 'Service';
+
+                    // Format order status
+                    const orderStatus = order.order_status || order.order_current_status;
+
+                    return {
+                        id: order.id,
+                        orderNo: order.order_no,
+                        time: timeString,
+                        customerName: customerName,
+                        location: location,
+                        status: getStatusText(orderStatus),
+                        statusColor: getStatusColor(orderStatus),
+                        date: order.service_date || order.created_at?.split('T')[0] || 'Today',
+                        type: orderStatus,
+                        phone: phone,
+                        service: serviceName,
+                        amount: order.grand_total || order.sub_total || 0,
+                        isRepeat: false,
+                        houseNo: houseNo,
+                        locality: locality,
+                        pincode: order.pincode || order.other_postcode,
+                        paymentMethod: order.payment_method,
+                        paymentStatus: order.payment_status,
+                    };
+                });
+
                 setJobs(transformedJobs);
             }
         } catch (error) {
@@ -90,43 +129,30 @@ const JobsScreen = () => {
     };
 
     const getStatusText = (status) => {
-        switch (status) {
+        switch (status?.toLowerCase()) {
             case 'pending': return 'Pending';
+            case 'assigned': return 'Assigned';
             case 'in_progress': return 'In Progress';
             case 'completed': return 'Completed';
-            case 'cancelled': return 'Cancelled';
-            default: return status;
+            case 'cancelled':
+            case 'canceled': return 'Cancelled';
+            default: return status || 'Unknown';
         }
     };
 
     const getStatusColor = (status) => {
-        switch (status) {
+        switch (status?.toLowerCase()) {
             case 'pending': return '#FFA500';
+            case 'assigned': return '#2196F3';
             case 'in_progress': return '#2196F3';
             case 'completed': return '#4CAF50';
-            case 'cancelled': return '#F44336';
+            case 'cancelled':
+            case 'canceled': return '#F44336';
             default: return '#666';
         }
     };
 
     const tabs = ['Upcoming', 'Pending', 'Completed', 'Cancelled'];
-
-    const filterJobsByTab = (tabName) => {
-        return jobs.filter(job => {
-            switch (tabName.toLowerCase()) {
-                case 'upcoming':
-                    return job.type === 'in_progress' || job.type === 'pending';
-                case 'pending':
-                    return job.type === 'pending';
-                case 'completed':
-                    return job.type === 'completed';
-                case 'cancelled':
-                    return job.type === 'cancelled';
-                default:
-                    return false;
-            }
-        });
-    };
 
     const groupJobsByDate = (jobs) => {
         const grouped = {};
@@ -149,14 +175,16 @@ const JobsScreen = () => {
         Linking.openURL(url);
     };
 
-    const filteredJobs = filterJobsByTab(activeTab);
-    const groupedJobs = groupJobsByDate(filteredJobs);
+    const groupedJobs = groupJobsByDate(jobs);
 
     const renderJobCard = (job) => (
         <View key={job.id} style={styles.jobCard}>
             <View style={styles.jobHeader}>
                 <View style={styles.jobTimeSection}>
                     <Text style={styles.jobTime}>{job.time}</Text>
+                    {job.orderNo && (
+                        <Text style={styles.orderNoText}>Order #{job.orderNo}</Text>
+                    )}
                     {job.isRepeat && (
                         <View style={styles.repeatBadge}>
                             <Text style={styles.repeatText}>REPEAT</Text>
@@ -167,12 +195,14 @@ const JobsScreen = () => {
                     )}
                 </View>
                 <View style={styles.jobActions}>
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleCall(job.phone)}
-                    >
-                        <Icon name="phone-outline" size={24} color="#666" />
-                    </TouchableOpacity>
+                    {job.phone && (
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleCall(job.phone)}
+                        >
+                            <Icon name="phone-outline" size={24} color="#666" />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => handleNavigation(job.location)}
@@ -181,7 +211,13 @@ const JobsScreen = () => {
                     </TouchableOpacity>
                 </View>
             </View>
-            <Text style={styles.customerName}>{job.customerName} • {job.location}</Text>
+            <Text style={styles.customerName}>{job.customerName}</Text>
+            <Text style={styles.locationText} numberOfLines={2}>{job.location}</Text>
+            {(job.houseNo || job.locality) && (
+                <Text style={styles.addressDetails}>
+                    {job.houseNo ? `${job.houseNo}, ` : ''}{job.locality || ''}
+                </Text>
+            )}
             <View style={styles.jobFooter}>
                 <Text style={[styles.jobStatus, { color: job.statusColor }]}>
                     {job.status}
@@ -190,6 +226,11 @@ const JobsScreen = () => {
                     <Text style={styles.amount}>₹{job.amount}</Text>
                 )}
             </View>
+            {job.paymentMethod && (
+                <Text style={styles.paymentInfo}>
+                    {job.paymentMethod === 'pay_after_cash_service' ? 'Cash on Service' : 'Online Payment'} • {job.paymentStatus}
+                </Text>
+            )}
         </View>
     );
 
@@ -401,6 +442,42 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: '#4CAF50',
+    },
+    locationText: {
+        fontSize: 13,
+        color: '#666',
+        marginBottom: 4,
+    },
+    addressDetails: {
+        fontSize: 12,
+        color: '#888',
+        marginBottom: 6,
+    },
+    orderNoText: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
+    },
+    paymentInfo: {
+        fontSize: 11,
+        color: '#888',
+        marginTop: 6,
+        textTransform: 'capitalize',
+    },
+    jobFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    jobStatus: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    amount: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: Colors.primary,
     },
     serviceText: {
         fontSize: 12,

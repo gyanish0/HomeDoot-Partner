@@ -12,7 +12,7 @@ const otpValidationSchema = Yup.object().shape({
 });
 
 const OtpScreen = ({ navigation, route }) => {
-    const { mobileNumber } = route.params || {};
+    const { mobileNumber, otpMessage } = route.params || {};
     const [timer, setTimer] = useState(30);
     const [canResend, setCanResend] = useState(false);
     const inputRefs = useRef([]);
@@ -120,6 +120,7 @@ const OtpScreen = ({ navigation, route }) => {
                                 We've sent a 4-digit code to
                             </Text>
                             <Text style={styles.mobileNumber}>+91 {mobileNumber}</Text>
+                            <Text style={styles.mobileNumber}>{otpMessage}</Text>
                         </View>
 
                         {/* OTP Input Boxes */}
