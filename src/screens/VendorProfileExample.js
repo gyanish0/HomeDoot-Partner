@@ -13,6 +13,7 @@ import {
     selectVendorLoading,
     selectVendorError,
 } from '../store/slices/vendorSlice';
+import { getProfileImageUrl } from '../utils/imageUtils';
 
 const VendorProfileExample = ({ navigation }) => {
     const dispatch = useDispatch();
@@ -21,7 +22,6 @@ const VendorProfileExample = ({ navigation }) => {
     const vendor = useSelector(selectVendor);
     const loading = useSelector(selectVendorLoading);
     const error = useSelector(selectVendorError);
-
     // Fetch vendor profile on component mount
     useEffect(() => {
         dispatch(fetchVendorProfile());
@@ -60,7 +60,7 @@ const VendorProfileExample = ({ navigation }) => {
                         <View style={styles.profileHeader}>
                             <View style={styles.avatarContainer}>
                                 <Image
-                                    source={{ uri: vendor.profile_photo_url || 'https://via.placeholder.com/100' }}
+                                    source={{ uri: getProfileImageUrl(vendor) }}
                                     style={styles.avatar}
                                 />
                                 <View style={styles.onlineIndicator} />

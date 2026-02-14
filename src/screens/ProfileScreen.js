@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../store/slices/authSlice';
 import { fetchVendorProfile, selectVendor, selectVendorLoading } from '../store/slices/vendorSlice';
 import Colors from '../constants/Colors';
+import { getProfileImageUrl } from '../utils/imageUtils';
 
 const ProfileScreen = () => {
     const dispatch = useDispatch();
@@ -106,7 +107,7 @@ const ProfileScreen = () => {
                     </View>
                 </View>
                 <Image
-                    source={profileData?.profile_photo_url ? { uri: profileData.profile_photo_url } : require('../assets/hdloginlogo.png')}
+                    source={{ uri: getProfileImageUrl(profileData) }}
                     style={styles.profileImage}
                     resizeMode="cover"
                 />

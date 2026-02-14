@@ -4,7 +4,7 @@
  */
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getVendorProfile } from '../../services/vendorService';
+import { getVendorProfile, getCities, getSubcategories } from '../../services/vendorService';
 
 // Initial state
 const initialState = {
@@ -14,6 +14,7 @@ const initialState = {
     categories: [],
     subCategories: [],
     selectedSubCategories: [],
+    fetchedSubCategories: [],
     loading: false,
     error: null,
 };
@@ -30,15 +31,51 @@ export const fetchVendorProfile = createAsyncThunk(
                 return rejectWithValue(response?.message || 'Failed to fetch vendor profile');
             }
         } catch (error) {
-            console.log('Error details:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status
-            });
             return rejectWithValue(
                 error.response?.data?.message ||
                 error.message ||
                 'An error occurred while fetching vendor profile'
+            );
+        }
+    }
+);
+
+export const fetchCitiesByState = createAsyncThunk(
+    'vendor/fetchCitiesByState',
+    async (stateId, { rejectWithValue }) => {
+        try {
+            const response = await getCities(stateId);
+
+            if (response) {
+                return response || [];
+            } else {
+                return rejectWithValue(response?.message || 'Failed to fetch cities');
+            }
+        } catch (error) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                error.message ||
+                'An error occurred while fetching cities'
+            );
+        }
+    }
+);
+
+export const fetchSubcategoriesByCategory = createAsyncThunk(
+    'vendor/fetchSubcategoriesByCategory',
+    async (categoryId, { rejectWithValue }) => {
+        try {
+            const response = await getSubcategories(categoryId);
+            if (response) {
+                return response || [];
+            } else {
+                return rejectWithValue(response?.message || 'Failed to fetch subcategories');
+            }
+        } catch (error) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                error.message ||
+                'An error occurred while fetching subcategories'
             );
         }
     }
@@ -56,6 +93,7 @@ const vendorSlice = createSlice({
             state.categories = [];
             state.subCategories = [];
             state.selectedSubCategories = [];
+            state.fetchedSubCategories = [];
             state.error = null;
         },
 
@@ -92,6 +130,32 @@ const vendorSlice = createSlice({
             .addCase(fetchVendorProfile.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
+            })
+            // Fetch cities by state
+            .addCase(fetchCitiesByState.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchCitiesByState.fulfilled, (state, action) => {
+                state.loading = false;
+                state.cities = action.payload;
+            })
+            .addCase(fetchCitiesByState.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+                state.cities = [];
+            })
+            // Fetch subcategories by category
+            .addCase(fetchSubcategoriesByCategory.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchSubcategoriesByCategory.fulfilled, (state, action) => {
+                state.loading = false;
+                state.fetchedSubCategories = action.payload;
+            })
+            .addCase(fetchSubcategoriesByCategory.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+                state.fetchedSubCategories = [];
             });
     },
 });
@@ -106,6 +170,7 @@ export const selectCities = (state) => state.vendor.cities;
 export const selectCategories = (state) => state.vendor.categories;
 export const selectSubCategories = (state) => state.vendor.subCategories;
 export const selectSelectedSubCategories = (state) => state.vendor.selectedSubCategories;
+export const selectFetchedSubCategories = (state) => state.vendor.fetchedSubCategories;
 export const selectVendorLoading = (state) => state.vendor.loading;
 export const selectVendorError = (state) => state.vendor.error;
 

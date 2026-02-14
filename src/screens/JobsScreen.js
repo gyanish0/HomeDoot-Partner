@@ -9,7 +9,9 @@ import {
     Linking,
     Alert,
     RefreshControl,
-    ActivityIndicator
+    ActivityIndicator,
+    Modal,
+    TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
@@ -18,6 +20,10 @@ import {
     getVendorAssignedOrders,
     getVendorCompletedOrders,
     getVendorCancelledOrders,
+    acceptVendorOrder,
+    sendJobStartOTP,
+    resendJobStartOTP,
+    verifyJobStartOTP,
 } from '../services/vendorService';
 
 const JobsScreen = () => {
@@ -26,6 +32,10 @@ const JobsScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [otpModalVisible, setOtpModalVisible] = useState(false);
+    const [otp, setOtp] = useState('');
+    const [selectedJob, setSelectedJob] = useState(null);
+    const [otpLoading, setOtpLoading] = useState(false);
 
     // Load jobs from API
     useEffect(() => {
@@ -37,6 +47,7 @@ const JobsScreen = () => {
         try {
             let response;
             const perPage = 20;
+
 
             switch (activeTab.toLowerCase()) {
                 case 'pending':
@@ -55,6 +66,7 @@ const JobsScreen = () => {
                     response = await getVendorPendingOrders(currentPage, perPage);
             }
             if (response?.status && response?.data) {
+                console.log(response.data, 'jobjobjobjobjob======111')
                 const transformedJobs = response.data.data.map(order => {
                     // Format time from service_time (24-hour format)
                     const serviceHour = parseInt(order.service_time);
@@ -175,6 +187,122 @@ const JobsScreen = () => {
         Linking.openURL(url);
     };
 
+    const handleAcceptOrder = async (job) => {
+        Alert.alert(
+            'Accept Order',
+            `Do you want to accept this order #${job.orderNo}?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Accept',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const response = await acceptVendorOrder(job.orderNo);
+                            if (response) {
+                                Alert.alert('Success', response?.message || 'Order accepted successfully');
+                                loadJobs(); // Refresh the list
+                            } else {
+                                Alert.alert('Error', response?.message || 'Failed to accept order');
+                            }
+                        } catch (error) {
+                            console.error('Error accepting order:', error);
+                            Alert.alert('Error', 'Failed to accept order. Please try again.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleReschedule = (job) => {
+        Alert.alert(
+            'Reschedule Order',
+            `Do you want to reschedule order #${job.orderNo}?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Reschedule',
+                    onPress: () => {
+                        // TODO: Implement reschedule API call or navigate to reschedule screen
+                        Alert.alert('Info', 'Reschedule functionality will be implemented');
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleSendSMS = async (job) => {
+        try {
+            setOtpLoading(true);
+            const response = await sendJobStartOTP(job.orderNo);
+            if (response?.success) {
+                setSelectedJob(job);
+                setOtpModalVisible(true);
+                // Alert.alert('Success', response?.message || 'OTP sent to customer');
+            } else {
+                Alert.alert('Error', response?.message || 'Failed to send OTPaaaa');
+            }
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            Alert.alert('Error', 'Failed to send OTP. Please try again.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async () => {
+        if (!otp || otp.length < 4) {
+            Alert.alert('Error', 'Please enter a valid OTP');
+            return;
+        }
+
+        try {
+            setOtpLoading(true);
+            const response = await verifyJobStartOTP(selectedJob.orderNo, otp);
+            console.log(response, 'jobjobresponse======11111')
+            if (response?.status) {
+                Alert.alert('Success', response?.message || 'Job started successfully');
+                setOtpModalVisible(false);
+                setOtp('');
+                setSelectedJob(null);
+                loadJobs(); // Refresh the list
+            } else {
+                Alert.alert('Error', response?.message || 'Invalid OTP');
+            }
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            Alert.alert('Error', error?.message || 'Failed to verify OTP. Please try again.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOTP = async () => {
+        try {
+            setOtpLoading(true);
+            const response = await resendJobStartOTP(selectedJob.orderNo);
+            if (response?.success) {
+                Alert.alert('Success', response?.message || 'OTP resent successfully');
+            } else {
+                Alert.alert('Error', response?.message || 'Failed to resend OTP');
+            }
+        } catch (error) {
+            console.error('Error resending OTP:', error);
+            Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
     const groupedJobs = groupJobsByDate(jobs);
 
     const renderJobCard = (job) => (
@@ -230,6 +358,39 @@ const JobsScreen = () => {
                 <Text style={styles.paymentInfo}>
                     {job.paymentMethod === 'pay_after_cash_service' ? 'Cash on Service' : 'Online Payment'} • {job.paymentStatus}
                 </Text>
+            )}
+
+            {/* Action button for Pending orders */}
+            {activeTab === 'Pending' && (
+                <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={() => handleAcceptOrder(job)}
+                >
+                    <Text style={styles.acceptButtonText}>Accept This Order</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* Action buttons for Upcoming orders */}
+            {activeTab === 'Upcoming' && (
+                <View style={styles.upcomingButtonsContainer}>
+                    <TouchableOpacity
+                        style={styles.rescheduleButton}
+                        onPress={() => handleReschedule(job)}
+                    >
+                        <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.smsButton}
+                        onPress={() => handleSendSMS(job)}
+                        disabled={otpLoading}
+                    >
+                        {otpLoading ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Text style={styles.smsButtonText}>Send SMS To Job Start</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
             )}
         </View>
     );
@@ -296,6 +457,68 @@ const JobsScreen = () => {
                     </View>
                 )}
             </ScrollView>
+
+            {/* OTP Verification Modal */}
+            <Modal
+                visible={otpModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => {
+                    setOtpModalVisible(false);
+                    setOtp('');
+                    setSelectedJob(null);
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.otpModalContainer}>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => {
+                                setOtpModalVisible(false);
+                                setOtp('');
+                                setSelectedJob(null);
+                            }}
+                        >
+                            <Icon name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                        <Text style={styles.otpModalTitle}>Verify OTP</Text>
+
+                        <TextInput
+                            style={styles.otpInput}
+                            placeholder="Enter OTP"
+                            placeholderTextColor="#999"
+                            value={otp}
+                            onChangeText={setOtp}
+                            keyboardType="number-pad"
+                            maxLength={6}
+                        />
+
+                        <TouchableOpacity
+                            style={styles.verifyButton}
+                            onPress={handleVerifyOTP}
+                            disabled={otpLoading}
+                        >
+                            {otpLoading ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Text style={styles.verifyButtonText}>Verify</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.resendButton}
+                            onPress={handleResendOTP}
+                            disabled={otpLoading}
+                        >
+                            {otpLoading ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Text style={styles.resendButtonText}>Resend OTP</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -531,6 +754,54 @@ const styles = StyleSheet.create({
         color: '#666',
         marginTop: 12,
     },
+    acceptButton: {
+        backgroundColor: Colors.primary,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    acceptButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    upcomingButtonsContainer: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 12,
+    },
+    rescheduleButton: {
+        flex: 1,
+        backgroundColor: '#2196F3',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rescheduleButtonText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    smsButton: {
+        flex: 1,
+        backgroundColor: '#1DBFAF',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    smsButtonText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
     helpButton: {
         position: 'absolute',
         bottom: 20,
@@ -549,6 +820,76 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     helpButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    otpModalContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 18,
+        width: '90%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+        position: 'relative',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        padding: 4,
+        zIndex: 1,
+    },
+    otpModalTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#333',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    otpInput: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        fontSize: 18,
+        color: '#333',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        marginBottom: 16,
+        textAlign: 'center',
+        letterSpacing: 8,
+    },
+    verifyButton: {
+        backgroundColor: '#1DBFAF',
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    verifyButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    resendButton: {
+        backgroundColor: '#F5A623',
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    resendButtonText: {
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -19,6 +19,7 @@ const BankDetailsScreen = ({ navigation }) => {
     const [fetchingData, setFetchingData] = useState(true);
     const [cancelledCheque, setCancelledCheque] = useState(null);
     const [existingBankDetails, setExistingBankDetails] = useState(null);
+    const [filePath, setFilePath] = useState(null);
 
     const formik = useFormik({
         initialValues: {
@@ -32,8 +33,8 @@ const BankDetailsScreen = ({ navigation }) => {
         onSubmit: async (values) => {
             setLoading(true);
             try {
-                // Validate that cheque file is uploaded
-                if (!cancelledCheque) {
+                // Validate that cheque file is uploaded or already exists
+                if (!cancelledCheque && !existingBankDetails?.cheque_file) {
                     Alert.alert('Required', 'Please upload a cancelled cheque image');
                     setLoading(false);
                     return;
@@ -46,6 +47,7 @@ const BankDetailsScreen = ({ navigation }) => {
                     bankName: values.bankName,
                     branchName: values.branchName,
                     cancelledCheque: cancelledCheque,
+                    existingChequeFile: !cancelledCheque ? existingBankDetails?.cheque_file : null,
                 };
 
                 const response = await updateVendorBankDetails(bankData);
@@ -80,6 +82,7 @@ const BankDetailsScreen = ({ navigation }) => {
                     // Check if bank data exists (not null)
                     if (bankData) {
                         setExistingBankDetails(bankData);
+                        setFilePath(response.data.cheque_file_path);
 
                         // Populate form with existing data
                         formik.setValues({
@@ -103,6 +106,11 @@ const BankDetailsScreen = ({ navigation }) => {
 
         fetchBankDetails();
     }, []);
+
+    const getDocumentUrl = (filename) => {
+        if (!filename || !filePath) return null;
+        return `${filePath}/${filename}`;
+    };
 
     const pickChequeImage = () => {
         const options = {
@@ -164,22 +172,6 @@ const BankDetailsScreen = ({ navigation }) => {
                     </View>
                 )}
 
-                {/* Account Holder Name */}
-                {/* <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Account Holder Name *</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter account holder name"
-                        value={formik.values.accountHolderName}
-                        onChangeText={formik.handleChange('accountHolderName')}
-                        onBlur={formik.handleBlur('accountHolderName')}
-                    />
-                    {formik.touched.accountHolderName && formik.errors.accountHolderName && (
-                        <Text style={styles.errorText}>{formik.errors.accountHolderName}</Text>
-                    )}
-                </View> */}
-
-                {/* Account Number */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Account Number *</Text>
                     <TextInput
@@ -246,17 +238,26 @@ const BankDetailsScreen = ({ navigation }) => {
                 <View style={styles.documentContainer}>
                     <Text style={styles.label}>Cancelled Cheque *</Text>
                     <TouchableOpacity
-                        style={[styles.uploadButton, !cancelledCheque && styles.uploadButtonError]}
+                        style={styles.uploadButton}
                         onPress={pickChequeImage}
                     >
                         <Text style={styles.uploadButtonText}>
-                            {cancelledCheque ? '✓ Image Selected' : 'Upload Cheque Image'}
+                            {cancelledCheque ? '✓ New Image Selected' : 'Upload Cheque Image'}
                         </Text>
                     </TouchableOpacity>
-                    {cancelledCheque && (
+                    {
+                        console.log(getDocumentUrl(existingBankDetails.cheque_file), 'getDocumentUrl(existingBankDetails.cheque_file)')
+                    }
+                    {cancelledCheque ? (
                         <Text style={styles.fileName}>{cancelledCheque.name}</Text>
-                    )}
-                    {!cancelledCheque && (
+                    ) : existingBankDetails?.cheque_file ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBankDetails.cheque_file);
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileLink}>View: {existingBankDetails.cheque_file}</Text>
+                        </TouchableOpacity>
+                    ) : (
                         <Text style={styles.errorText}>Cheque image is required</Text>
                     )}
                 </View>
@@ -384,6 +385,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         marginTop: 5,
+    },
+    existingFileLink: {
+        fontSize: 12,
+        color: '#B91C4F',
+        marginTop: 5,
+        textDecorationLine: 'underline',
     },
     submitButton: {
         backgroundColor: '#B91C4F',

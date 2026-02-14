@@ -11,8 +11,8 @@ export const getStates = async () => {
 
 export const getCities = async (stateId) => {
     try {
-        const response = await axiosInstance.get(`city?state_id=${stateId}`);
-        return response;
+        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/cities/${stateId}`);
+        return response.data;
     } catch (error) {
         throw error;
     }
@@ -21,6 +21,15 @@ export const getCities = async (stateId) => {
 export const getCategories = async () => {
     try {
         const response = await axiosInstance.get('category');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const getSubcategories = async (categoryId) => {
+    try {
+        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/ajax-subcategory?cat_id=${categoryId}`);
         return response;
     } catch (error) {
         throw error;
@@ -308,6 +317,9 @@ export const updateVendorBankDetails = async (bankData) => {
             });
             // Add hidden field with filename
             formData.append('hid_cheque_file', bankData.cancelledCheque.name || 'cheque.jpg');
+        } else if (bankData.existingChequeFile) {
+            // Send existing filename to indicate "keep existing file"
+            formData.append('hid_cheque_file', bankData.existingChequeFile);
         }
 
         console.log('📤 Sending bank details update:', {
@@ -347,6 +359,55 @@ export const getVendorBusinessDetails = async () => {
     }
 };
 
+export const acceptVendorOrder = async (orderNo) => {
+    try {
+        const response = await axiosInstance.post('orders/accept', {
+            order_no: orderNo
+        });
+        return response;
+    } catch (error) {
+        console.error('Error accepting order:', error);
+        throw error;
+    }
+};
+
+export const sendJobStartOTP = async (orderNo) => {
+    try {
+        const response = await axiosInstance.post('order/job-start/send-otp', {
+            order_no: orderNo
+        });
+        return response;
+    } catch (error) {
+        console.error('Error sending job start OTP:', error);
+        throw error;
+    }
+};
+
+export const resendJobStartOTP = async (orderNo) => {
+    try {
+        const response = await axiosInstance.post('order/job-start/resend-otp', {
+            order_no: orderNo
+        });
+        return response;
+    } catch (error) {
+        console.error('Error resending job start OTP:', error);
+        throw error;
+    }
+};
+
+export const verifyJobStartOTP = async (orderNo, otp) => {
+    try {
+        const response = await axiosInstance.post('order/job-start/verify-otp', {
+            order_no: orderNo,
+            otp: otp
+        });
+        return response;
+    } catch (error) {
+        console.error('Error verifying job start OTP:', error);
+        throw error;
+    }
+};
+
 export const updateVendorBusinessDetails = async (businessData) => {
     try {
         const formData = new FormData();
@@ -369,6 +430,8 @@ export const updateVendorBusinessDetails = async (businessData) => {
             };
             formData.append('gst_file', gstFileData);
             formData.append('gst_file_val', gstFileData.name);
+        } else if (businessData.existingGstFile) {
+            formData.append('gst_file_val', businessData.existingGstFile);
         }
 
         // Add PAN file with _val field
@@ -380,6 +443,9 @@ export const updateVendorBusinessDetails = async (businessData) => {
             };
             formData.append('pan_file', panFileData);
             formData.append('pan_file_val', panFileData.name);
+        } else if (businessData.existingPanFile) {
+            // Send existing filename to indicate "keep existing file"
+            formData.append('pan_file_val', businessData.existingPanFile);
         }
 
         // Add TAN file with _val field (previously udyogFile)
@@ -391,6 +457,8 @@ export const updateVendorBusinessDetails = async (businessData) => {
             };
             formData.append('tan_file', tanFileData);
             formData.append('tan_file_val', tanFileData.name);
+        } else if (businessData.existingTanFile) {
+            formData.append('tan_file_val', businessData.existingTanFile);
         }
 
         // Add Address Proof with _val field
@@ -402,6 +470,8 @@ export const updateVendorBusinessDetails = async (businessData) => {
             };
             formData.append('address_proof', addressProofData);
             formData.append('address_proof_val', addressProofData.name);
+        } else if (businessData.existingAddressProof) {
+            formData.append('address_proof_val', businessData.existingAddressProof);
         }
 
         // Add Aadhar Proof (front) with _val field
@@ -413,6 +483,8 @@ export const updateVendorBusinessDetails = async (businessData) => {
             };
             formData.append('aadhar_proof', aadharProofData);
             formData.append('aadhar_proof_val', aadharProofData.name);
+        } else if (businessData.existingAadharProof) {
+            formData.append('aadhar_proof_val', businessData.existingAadharProof);
         }
 
         // Add Aadhar Back with _val field
@@ -480,4 +552,8 @@ export default {
     updateVendorBankDetails,
     getVendorBusinessDetails,
     updateVendorBusinessDetails,
+    acceptVendorOrder,
+    sendJobStartOTP,
+    resendJobStartOTP,
+    verifyJobStartOTP,
 };

@@ -9,6 +9,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import JobHistoryScreen from '../screens/JobHistoryScreen';
 import MyHubScreen from '../screens/MyHubScreen';
+import ManageHubScreen from '../screens/ManageHubScreen';
 import CommissionScreen from '../screens/CommissionScreen';
 import RatingReviewScreen from '../screens/RatingReviewScreen';
 import BusinessDetailsScreen from '../screens/BusinessDetailsScreen';
@@ -72,6 +73,11 @@ const RootNavigator = () => {
                         name="MyHub"
                         component={MyHubScreen}
                         options={{ headerShown: true, title: 'My Hub' }}
+                    />
+                    <Stack.Screen
+                        name="ManageHub"
+                        component={ManageHubScreen}
+                        options={{ headerShown: true, title: 'Manage Hub' }}
                     />
                     <Stack.Screen
                         name="Commission"

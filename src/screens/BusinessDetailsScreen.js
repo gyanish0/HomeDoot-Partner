@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -19,6 +19,7 @@ const BusinessDetailsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [fetchingData, setFetchingData] = useState(true);
     const [existingBusinessDetails, setExistingBusinessDetails] = useState(null);
+    const [filePaths, setFilePaths] = useState(null);
     const [documents, setDocuments] = useState({
         gstFile: null,
         panFile: null,
@@ -54,6 +55,12 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     udyogFile: documents.udyogFile,
                     addressProof: documents.addressProof,
                     aadharProof: documents.aadharProof,
+                    // Send existing file names if no new file selected
+                    existingPanFile: !documents.panFile ? existingBusinessDetails?.pan_file : null,
+                    existingGstFile: !documents.gstFile ? existingBusinessDetails?.gst_file : null,
+                    existingTanFile: !documents.udyogFile ? existingBusinessDetails?.tan_file : null,
+                    existingAddressProof: !documents.addressProof ? existingBusinessDetails?.address_proof : null,
+                    existingAadharProof: !documents.aadharProof ? existingBusinessDetails?.aadhar_proof : null,
                 };
 
                 const response = await updateVendorBusinessDetails(businessData);
@@ -66,7 +73,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                 }
             } catch (error) {
                 console.error('Business details update error:', error);
-                Alert.alert('Error', error.message || 'Failed to update business details');
+
+                // Show validation errors if present
+                if (error.response?.data?.errors) {
+                    const errorMessages = Object.entries(error.response.data.errors)
+                        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+                        .join('\n');
+                    Alert.alert('Validation Error', errorMessages);
+                } else {
+                    Alert.alert('Error', error.message || 'Failed to update business details');
+                }
             } finally {
                 setLoading(false);
             }
@@ -80,27 +96,23 @@ const BusinessDetailsScreen = ({ navigation }) => {
                 setFetchingData(true);
                 const response = await getVendorBusinessDetails();
 
-                console.log('Business details response:', response);
+                if (response.success && response.data?.business) {
+                    const businessData = response.data.business;
+                    setExistingBusinessDetails(businessData);
+                    setFilePaths(response.data.file_paths);
 
-                if (response.success && response.data) {
-                    const businessData = response.data;
-
-                    if (businessData) {
-                        setExistingBusinessDetails(businessData);
-
-                        // Populate form with existing data
-                        formik.setValues({
-                            businessName: businessData.business_name || '',
-                            contactPerson: businessData.contact_person || '',
-                            mobile: businessData.mobile || '',
-                            businessAddress: businessData.business_address || '',
-                            gstDetails: businessData.gst_details || '',
-                            panDetails: businessData.pan_details || '',
-                            aadharNumber: businessData.aadhar_number || '',
-                        });
-                    } else {
-                        console.log('No existing business details found - showing empty form');
-                    }
+                    // Populate form with existing data
+                    formik.setValues({
+                        businessName: businessData.business_name || '',
+                        contactPerson: businessData.contact_person || '',
+                        mobile: businessData.contact_mobile || '',
+                        businessAddress: businessData.business_address || '',
+                        gstDetails: businessData.gst_details || '',
+                        panDetails: businessData.pan_details || '',
+                        aadharNumber: businessData.aadhar_details || '',
+                    });
+                } else {
+                    console.log('No existing business details found - showing empty form');
                 }
             } catch (error) {
                 console.error('Error fetching business details:', error);
@@ -111,6 +123,12 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
         fetchBusinessDetails();
     }, []);
+
+    // Helper function to get document URL
+    const getDocumentUrl = (filename, pathKey) => {
+        if (!filename || !filePaths || !filePaths[pathKey]) return null;
+        return `${filePaths[pathKey]}/${filename}`;
+    };
 
     const pickDocument = (documentType) => {
         const options = {
@@ -247,9 +265,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     >
                         <Text style={styles.fileButtonText}>Choose File</Text>
                     </TouchableOpacity>
-                    {documents.gstFile && (
-                        <Text style={styles.fileName} numberOfLines={1}>Selected</Text>
-                    )}
+                    {documents.gstFile ? (
+                        <Text style={styles.fileName}>New file selected</Text>
+                    ) : existingBusinessDetails?.gst_file ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBusinessDetails.gst_file, 'gst_files');
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileNameLink}>View: {existingBusinessDetails.gst_file}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* PAN Details */}
@@ -278,9 +303,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     >
                         <Text style={styles.fileButtonText}>Choose File</Text>
                     </TouchableOpacity>
-                    {documents.panFile && (
-                        <Text style={styles.fileName} numberOfLines={1}>Selected</Text>
-                    )}
+                    {documents.panFile ? (
+                        <Text style={styles.fileName}>New file selected</Text>
+                    ) : existingBusinessDetails?.pan_file ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBusinessDetails.pan_file, 'pan_files');
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileNameLink}>View: {existingBusinessDetails.pan_file}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* UDYOG File */}
@@ -292,9 +324,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     >
                         <Text style={styles.fileButtonText}>Choose File</Text>
                     </TouchableOpacity>
-                    {documents.udyogFile && (
-                        <Text style={styles.fileName} numberOfLines={1}>Selected</Text>
-                    )}
+                    {documents.udyogFile ? (
+                        <Text style={styles.fileName}>New file selected</Text>
+                    ) : existingBusinessDetails?.tan_file ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBusinessDetails.tan_file, 'tan_files');
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileNameLink}>View: {existingBusinessDetails.tan_file}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* Address Proof */}
@@ -306,9 +345,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     >
                         <Text style={styles.fileButtonText}>Choose File</Text>
                     </TouchableOpacity>
-                    {documents.addressProof && (
-                        <Text style={styles.fileName} numberOfLines={1}>Selected</Text>
-                    )}
+                    {documents.addressProof ? (
+                        <Text style={styles.fileName}>New file selected</Text>
+                    ) : existingBusinessDetails?.address_proof ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBusinessDetails.address_proof, 'address_proofs');
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileNameLink}>View: {existingBusinessDetails.address_proof}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* Aadhar Number */}
@@ -337,9 +383,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
                     >
                         <Text style={styles.fileButtonText}>Choose File</Text>
                     </TouchableOpacity>
-                    {documents.aadharProof && (
-                        <Text style={styles.fileName} numberOfLines={1}>Selected</Text>
-                    )}
+                    {documents.aadharProof ? (
+                        <Text style={styles.fileName}>New file selected</Text>
+                    ) : existingBusinessDetails?.aadhar_proof ? (
+                        <TouchableOpacity onPress={() => {
+                            const url = getDocumentUrl(existingBusinessDetails.aadhar_proof, 'aadhar_proofs');
+                            if (url) Linking.openURL(url);
+                        }}>
+                            <Text style={styles.existingFileNameLink}>View: {existingBusinessDetails.aadhar_proof}</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
 
                 {/* Submit Button */}
@@ -447,6 +500,18 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#4CAF50',
         marginTop: 4,
+    },
+    existingFileName: {
+        fontSize: 11,
+        color: '#666',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    existingFileNameLink: {
+        fontSize: 11,
+        color: '#9C27B0',
+        marginTop: 4,
+        textDecorationLine: 'underline',
     },
     errorText: {
         color: '#FF0000',

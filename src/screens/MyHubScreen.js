@@ -1,41 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import axiosInstance from '../services/axiosInstance';
 
 
 const MyHubScreen = ({ navigation }) => {
     const [selectedHub, setSelectedHub] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [hubAreas, setHubAreas] = useState([]);
 
-    // List of hub areas with pin codes and coordinates
-    const hubAreas = [
-        {
-            id: 0,
-            name: 'Panvel',
-            pincode: '410206',
-            latitude: 18.9894,
-            longitude: 73.1175,
-        },
-        {
-            id: 1,
-            name: 'Navi Mumbai',
-            pincode: '400614',
-            latitude: 19.0330,
-            longitude: 73.0297,
-        },
-        {
-            id: 2,
-            name: 'Vashi',
-            pincode: '400703',
-            latitude: 19.0768,
-            longitude: 73.0169,
+    useEffect(() => {
+        fetchServiceAreas();
+    }, []);
+
+    useEffect(() => {
+        if (hubAreas.length > 0) {
+            setSelectedHub(hubAreas[0].id);
         }
-    ];
+    }, [hubAreas]);
+
+    const fetchServiceAreas = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await axiosInstance.get('/service-area');
+            console.log(response.data.assignments, 'response')
+            if (response.data) {
+                const { assignments } = response.data;
+
+                const transformedAreas = assignments.map((assignment, index) => ({
+                    id: index,
+                    assignmentId: assignment.id,
+                    name: assignment.area.state.state_name,
+                    pincode: assignment.area.pincode.toString(),
+                    stateId: assignment.area.state_id,
+                    areaId: assignment.area.id,
+                }));
+
+                setHubAreas(transformedAreas);
+            }
+        } catch (err) {
+            console.error('Error fetching service areas:', err);
+            setError(err.message || 'Failed to load service areas');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleHubSelect = (hubId) => {
         setSelectedHub(hubId);
@@ -48,72 +66,99 @@ const MyHubScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Hub Areas Tabs */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.tabsContainer}
-                    contentContainerStyle={styles.tabsContent}
-                >
-                    {hubAreas.map((hub) => (
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#4285F4" />
+                    <Text style={styles.loadingText}>Loading service areas...</Text>
+                </View>
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <Icon name="alert-circle-outline" size={60} color="#FF5252" />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={fetchServiceAreas}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : hubAreas.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Icon name="map-marker-off" size={60} color="#999" />
+                    <Text style={styles.emptyText}>No service areas assigned</Text>
+                </View>
+            ) : (
+                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                    {/* Hub Areas Tabs */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.tabsContainer}
+                        contentContainerStyle={styles.tabsContent}
+                    >
+                        {hubAreas.map((hub) => (
+                            <TouchableOpacity
+                                key={hub.id}
+                                style={styles.tabWrapper}
+                                onPress={() => handleHubSelect(hub.id)}
+                            >
+                                <Text style={[
+                                    styles.tabName,
+                                    selectedHub === hub.id && styles.tabNameSelected
+                                ]}>
+                                    {hub.name}
+                                </Text>
+                                {selectedHub === hub.id && (
+                                    <View style={styles.tabUnderline} />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    {/* Manage Hub Button */}
+                    <TouchableOpacity
+                        style={styles.manageHubButton}
+                        onPress={() => navigation.navigate('ManageHub')}
+                    >
+                        <Icon name="plus-circle" size={24} color="#fff" />
+                        <Text style={styles.manageHubButtonText}>Manage Hub Areas</Text>
+                    </TouchableOpacity>
+
+                    {/* Map Section */}
+                    <View style={styles.mapContainer}>
+                        <View style={styles.mapPlaceholder}>
+                            <Icon name="map-marker" size={50} color="#4285F4" />
+                            <Text style={styles.mapText}>{hubAreas[selectedHub]?.name}</Text>
+                            <Text style={styles.mapSubtext}>Pincode: {hubAreas[selectedHub]?.pincode}</Text>
+                            <Text style={styles.mapInfoText}>Service Area ID: {hubAreas[selectedHub]?.areaId}</Text>
+                        </View>
+                        {/* Google Maps logo */}
+                        <View style={styles.googleLogo}>
+                            <Text style={styles.googleText}>Google</Text>
+                        </View>
+                    </View>
+
+                    {/* Need Help Section */}
+                    <View style={styles.helpSection}>
+                        <Text style={styles.helpTitle}>Need help?</Text>
+
                         <TouchableOpacity
-                            key={hub.id}
-                            style={styles.tabWrapper}
-                            onPress={() => handleHubSelect(hub.id)}
+                            style={styles.helpItem}
+                            onPress={() => handleHelpItem('What is a Hub?')}
                         >
-                            <Text style={[
-                                styles.tabName,
-                                selectedHub === hub.id && styles.tabNameSelected
-                            ]}>
-                                {hub.name}
-                            </Text>
-                            {selectedHub === hub.id && (
-                                <View style={styles.tabUnderline} />
-                            )}
+                            <Text style={styles.helpItemText}>What is a Hub?</Text>
+                            <Icon name="chevron-right" size={24} color="#666" />
                         </TouchableOpacity>
-                    ))}
+
+                        <View style={styles.helpDivider} />
+
+                        <TouchableOpacity
+                            style={styles.helpItem}
+                            onPress={() => handleHelpItem('Getting rebooking leads outside hub')}
+                        >
+                            <Text style={styles.helpItemText}>Getting rebooking leads outside hub</Text>
+                            <Icon name="chevron-right" size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
                 </ScrollView>
-
-                {/* Map Section */}
-                <View style={styles.mapContainer}>
-                    <View style={styles.mapPlaceholder}>
-                        <Icon name="map-marker" size={50} color="#4285F4" />
-                        <Text style={styles.mapText}>{hubAreas[selectedHub].name}</Text>
-                        <Text style={styles.mapSubtext}>Pincode: {hubAreas[selectedHub].pincode}</Text>
-                        <Text style={styles.mapCoords}>
-                            {hubAreas[selectedHub].latitude.toFixed(4)}°N, {hubAreas[selectedHub].longitude.toFixed(4)}°E
-                        </Text>
-                    </View>
-                    {/* Google Maps logo */}
-                    <View style={styles.googleLogo}>
-                        <Text style={styles.googleText}>Google</Text>
-                    </View>
-                </View>
-
-                {/* Need Help Section */}
-                <View style={styles.helpSection}>
-                    <Text style={styles.helpTitle}>Need help?</Text>
-
-                    <TouchableOpacity
-                        style={styles.helpItem}
-                        onPress={() => handleHelpItem('What is a Hub?')}
-                    >
-                        <Text style={styles.helpItemText}>What is a Hub?</Text>
-                        <Icon name="chevron-right" size={24} color="#666" />
-                    </TouchableOpacity>
-
-                    <View style={styles.helpDivider} />
-
-                    <TouchableOpacity
-                        style={styles.helpItem}
-                        onPress={() => handleHelpItem('Getting rebooking leads outside hub')}
-                    >
-                        <Text style={styles.helpItemText}>Getting rebooking leads outside hub</Text>
-                        <Icon name="chevron-right" size={24} color="#666" />
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+            )}
         </View>
     );
 };
@@ -169,6 +214,28 @@ const styles = StyleSheet.create({
         height: 3,
         backgroundColor: '#000',
         borderRadius: 2,
+    },
+    manageHubButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1DBFAF',
+        marginHorizontal: 16,
+        marginTop: 20,
+        marginBottom: 10,
+        paddingVertical: 14,
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    manageHubButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: 8,
     },
     tableContainer: {
         marginHorizontal: 16,
@@ -268,11 +335,56 @@ const styles = StyleSheet.create({
         color: '#666',
         marginTop: 6,
     },
-    mapCoords: {
+    mapInfoText: {
         fontSize: 14,
-        color: '#999',
+        color: '#666',
         marginTop: 8,
-        fontFamily: 'monospace',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#666',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+    },
+    retryButton: {
+        marginTop: 20,
+        backgroundColor: '#4285F4',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#999',
     },
     googleLogo: {
         position: 'absolute',
