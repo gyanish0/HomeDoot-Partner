@@ -14,6 +14,7 @@ import {
     TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CalendarPicker from 'react-native-calendar-picker';
 import Colors from '../constants/Colors';
 import {
     getVendorPendingOrders,
@@ -24,7 +25,11 @@ import {
     sendJobStartOTP,
     resendJobStartOTP,
     verifyJobStartOTP,
+    sendJobStopOTP,
+    verifyJobStopOTP,
+    rescheduleVendorOrder,
 } from '../services/vendorService';
+import { getVendorId } from '../utils/storage';
 
 const JobsScreen = () => {
     const [activeTab, setActiveTab] = useState('Upcoming');
@@ -36,6 +41,29 @@ const JobsScreen = () => {
     const [otp, setOtp] = useState('');
     const [selectedJob, setSelectedJob] = useState(null);
     const [otpLoading, setOtpLoading] = useState(false);
+    const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
+    const [rescheduleDate, setRescheduleDate] = useState('');
+    const [rescheduleTime, setRescheduleTime] = useState('');
+    const [rescheduleLoading, setRescheduleLoading] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(null);
+
+    // Time options for reschedule
+    const timeOptions = [
+        { label: '8 AM', value: 8 },
+        { label: '9 AM', value: 9 },
+        { label: '10 AM', value: 10 },
+        { label: '11 AM', value: 11 },
+        { label: '12 PM', value: 12 },
+        { label: '1 PM', value: 13 },
+        { label: '2 PM', value: 14 },
+        { label: '3 PM', value: 15 },
+        { label: '4 PM', value: 16 },
+        { label: '5 PM', value: 17 },
+        { label: '6 PM', value: 18 },
+        { label: '7 PM', value: 19 },
+    ];
 
     // Load jobs from API
     useEffect(() => {
@@ -118,6 +146,8 @@ const JobsScreen = () => {
                         pincode: order.pincode || order.other_postcode,
                         paymentMethod: order.payment_method,
                         paymentStatus: order.payment_status,
+                        job_start_sms_ver: order.job_start_sms_ver,
+                        vendor_ids: order.vendor_ids
                     };
                 });
 
@@ -221,23 +251,125 @@ const JobsScreen = () => {
     };
 
     const handleReschedule = (job) => {
-        Alert.alert(
-            'Reschedule Order',
-            `Do you want to reschedule order #${job.orderNo}?`,
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Reschedule',
-                    onPress: () => {
-                        // TODO: Implement reschedule API call or navigate to reschedule screen
-                        Alert.alert('Info', 'Reschedule functionality will be implemented');
-                    }
-                }
-            ]
-        );
+        setSelectedJob(job);
+        setShowCalendar(false); // Reset calendar visibility
+        setShowTimePicker(false); // Reset time picker visibility
+        setRescheduleTime(''); // Reset time selection
+
+        // Calculate date range: tomorrow to 5 days from today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const maxDate = new Date(today);
+        maxDate.setDate(maxDate.getDate() + 5);
+
+        if (job.date) {
+            const jobDate = new Date(job.date);
+            jobDate.setHours(0, 0, 0, 0);
+
+            // Only pre-fill if the job date is within valid range (tomorrow to +5 days)
+            if (jobDate >= tomorrow && jobDate <= maxDate) {
+                setRescheduleDate(job.date);
+                setSelectedDate(jobDate);
+            } else {
+                // Job date is outside valid range, start with tomorrow
+                const formatted = tomorrow.toISOString().split('T')[0];
+                setRescheduleDate(formatted);
+                setSelectedDate(tomorrow);
+            }
+        } else {
+            // No date, start with tomorrow
+            const formatted = tomorrow.toISOString().split('T')[0];
+            setRescheduleDate(formatted);
+            setSelectedDate(tomorrow);
+        }
+        setRescheduleModalVisible(true);
+    };
+
+    const handleDateSelect = (date) => {
+        const jsDate = date instanceof Date ? date : new Date(date);
+        jsDate.setHours(0, 0, 0, 0);
+
+        // Validate date range
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const maxDate = new Date(today);
+        maxDate.setDate(maxDate.getDate() + 5);
+
+        if (jsDate < tomorrow) {
+            Alert.alert('Invalid Date', 'Please select a date from tomorrow onwards.');
+            return;
+        }
+
+        if (jsDate > maxDate) {
+            Alert.alert('Invalid Date', 'Please select a date within the next 5 days.');
+            return;
+        }
+
+        const formatted = jsDate.toISOString().split('T')[0];
+        setSelectedDate(jsDate);
+        setRescheduleDate(formatted);
+        setShowCalendar(false);
+    };
+
+    const handleRescheduleSubmit = async () => {
+        if (!rescheduleDate || !rescheduleTime) {
+            Alert.alert('Error', 'Please select both date and time');
+            return;
+        }
+
+        // Validate date range before submitting
+        const selectedDateObj = new Date(rescheduleDate);
+        selectedDateObj.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const maxDate = new Date(today);
+        maxDate.setDate(maxDate.getDate() + 5);
+
+        if (selectedDateObj < tomorrow || selectedDateObj > maxDate) {
+            Alert.alert('Invalid Date', 'Please select a date from tomorrow to 5 days from today.');
+            return;
+        }
+
+        try {
+            setRescheduleLoading(true);
+
+            const vendorId = selectedJob.vendor_ids // Use job's vendor_ids or fallback to current vendor ID
+
+            // Find the time value from the selected label
+            const timeOption = timeOptions.find(opt => opt.label === rescheduleTime);
+            const timeValue = timeOption ? timeOption.value : rescheduleTime;
+
+            const response = await rescheduleVendorOrder(
+                selectedJob.orderNo,
+                rescheduleDate,
+                timeValue,
+                vendorId
+            );
+
+            if (response?.success || response?.status) {
+                Alert.alert('Success', response?.message || 'Order rescheduled successfully');
+                setRescheduleModalVisible(false);
+                setRescheduleDate('');
+                setRescheduleTime('');
+                setSelectedJob(null);
+                setShowCalendar(false);
+                setSelectedDate(null);
+                loadJobs(); // Refresh the list
+            } else {
+                Alert.alert('Error', response?.message || 'Failed to reschedule order');
+            }
+        } catch (error) {
+            console.error('Error rescheduling order:', error);
+            Alert.alert('Error', error?.message || 'Failed to reschedule order. Please try again.');
+        } finally {
+            setRescheduleLoading(false);
+        }
     };
 
     const handleSendSMS = async (job) => {
@@ -258,19 +390,37 @@ const JobsScreen = () => {
             setOtpLoading(false);
         }
     };
-
+    const handleJobStopSendSMS = async (job) => {
+        try {
+            setOtpLoading(true);
+            const response = await sendJobStopOTP(job.orderNo);
+            if (response?.success) {
+                setSelectedJob(job);
+                setOtpModalVisible(true);
+                // Alert.alert('Success', response?.message || 'OTP sent to customer');
+            } else {
+                Alert.alert('Error', response?.message || 'Failed to send OTPaaaa');
+            }
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            Alert.alert('Error', 'Failed to send OTP. Please try again.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
     const handleVerifyOTP = async () => {
         if (!otp || otp.length < 4) {
             Alert.alert('Error', 'Please enter a valid OTP');
             return;
         }
-
         try {
             setOtpLoading(true);
-            const response = await verifyJobStartOTP(selectedJob.orderNo, otp);
-            console.log(response, 'jobjobresponse======11111')
-            if (response?.status) {
-                Alert.alert('Success', response?.message || 'Job started successfully');
+            const response = selectedJob.job_start_sms_ver === null
+                ? await verifyJobStartOTP(selectedJob.orderNo, otp)
+                : await verifyJobStopOTP(selectedJob.orderNo, otp);
+            if (response?.success) {
+                const successMessage = selectedJob.job_start_sms_ver === null ? 'Job started successfully' : 'Job stopped successfully';
+                Alert.alert('Success', response?.message || successMessage);
                 setOtpModalVisible(false);
                 setOtp('');
                 setSelectedJob(null);
@@ -289,7 +439,9 @@ const JobsScreen = () => {
     const handleResendOTP = async () => {
         try {
             setOtpLoading(true);
-            const response = await resendJobStartOTP(selectedJob.orderNo);
+            const response = selectedJob.job_start_sms_ver === null
+                ? await resendJobStartOTP(selectedJob.orderNo)
+                : await sendJobStopOTP(selectedJob.orderNo);
             if (response?.success) {
                 Alert.alert('Success', response?.message || 'OTP resent successfully');
             } else {
@@ -379,15 +531,18 @@ const JobsScreen = () => {
                     >
                         <Text style={styles.rescheduleButtonText}>Reschedule</Text>
                     </TouchableOpacity>
+                    {/* handleJobStopSendSMS */}
                     <TouchableOpacity
                         style={styles.smsButton}
-                        onPress={() => handleSendSMS(job)}
+                        onPress={() => {
+                            job.job_start_sms_ver === null ? handleSendSMS(job) : handleJobStopSendSMS(job)
+                        }}
                         disabled={otpLoading}
                     >
                         {otpLoading ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <Text style={styles.smsButtonText}>Send SMS To Job Start</Text>
+                            <Text style={styles.smsButtonText}>{job.job_start_sms_ver === null ? 'Job Start' : 'Job Stop'}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -516,6 +671,145 @@ const JobsScreen = () => {
                                 <Text style={styles.resendButtonText}>Resend OTP</Text>
                             )}
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Reschedule Modal */}
+            <Modal
+                visible={rescheduleModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => {
+                    setRescheduleModalVisible(false);
+                    setRescheduleDate('');
+                    setRescheduleTime('');
+                    setSelectedJob(null);
+                    setShowCalendar(false);
+                    setSelectedDate(null);
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.rescheduleModalContainer}>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => {
+                                setRescheduleModalVisible(false);
+                                setRescheduleDate('');
+                                setRescheduleTime('');
+                                setSelectedJob(null);
+                                setShowCalendar(false);
+                                setSelectedDate(null);
+                            }}
+                        >
+                            <Icon name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                        <Text style={styles.otpModalTitle}>Reschedule Order</Text>
+                        <Text style={styles.orderNoText}>Order #{selectedJob?.orderNo}</Text>
+
+                        <ScrollView style={styles.rescheduleScrollView} showsVerticalScrollIndicator={false}>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.label}>Service Date</Text>
+                                <TouchableOpacity
+                                    style={styles.dateInput}
+                                    onPress={() => setShowCalendar(!showCalendar)}
+                                >
+                                    <Icon name="calendar" size={18} color="#666" />
+                                    <Text style={[styles.dateText, !rescheduleDate && styles.placeholderText]}>
+                                        {rescheduleDate || 'YYYY-MM-DD'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {showCalendar && (
+                                <View style={styles.calendarContainer}>
+                                    <CalendarPicker
+                                        selectedStartDate={selectedDate}
+                                        initialDate={selectedDate || (() => {
+                                            const tomorrow = new Date();
+                                            tomorrow.setDate(tomorrow.getDate() + 1);
+                                            return tomorrow;
+                                        })()}
+                                        onDateChange={handleDateSelect}
+                                        todayBackgroundColor="#E0E0E0"
+                                        selectedDayColor="#2196F3"
+                                        selectedDayTextColor="#FFFFFF"
+                                        minDate={(() => {
+                                            const tomorrow = new Date();
+                                            tomorrow.setDate(tomorrow.getDate() + 1);
+                                            return tomorrow;
+                                        })()}
+                                        maxDate={(() => {
+                                            const maxDate = new Date();
+                                            maxDate.setDate(maxDate.getDate() + 5);
+                                            return maxDate;
+                                        })()}
+                                        width={350}
+                                        textStyle={{
+                                            fontFamily: 'System',
+                                            color: '#000',
+                                        }}
+                                    />
+                                </View>
+                            )}
+
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.label}>Service Time</Text>
+                                <TouchableOpacity
+                                    style={styles.timePickerButton}
+                                    onPress={() => setShowTimePicker(!showTimePicker)}
+                                >
+                                    <Text style={[styles.timePickerText, !rescheduleTime && styles.placeholderText]}>
+                                        {rescheduleTime || 'Select Time'}
+                                    </Text>
+                                    <Icon name={showTimePicker ? "chevron-up" : "chevron-down"} size={24} color="#666" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {showTimePicker && (
+                                <View style={styles.timePickerContainer}>
+                                    <ScrollView style={styles.timePickerScroll} nestedScrollEnabled={true}>
+                                        <TouchableOpacity
+                                            style={[styles.timeOption, !rescheduleTime && styles.selectedTimeOption]}
+                                            onPress={() => {
+                                                setRescheduleTime('');
+                                                setShowTimePicker(false);
+                                            }}
+                                        >
+                                            <Text style={[styles.timeOptionText, !rescheduleTime && styles.selectedTimeOptionText]}>
+                                                Select
+                                            </Text>
+                                        </TouchableOpacity>
+                                        {timeOptions.map((timeOpt) => (
+                                            <TouchableOpacity
+                                                key={timeOpt.value}
+                                                style={[styles.timeOption, rescheduleTime === timeOpt.label && styles.selectedTimeOption]}
+                                                onPress={() => {
+                                                    setRescheduleTime(timeOpt.label);
+                                                    setShowTimePicker(false);
+                                                }}
+                                            >
+                                                <Text style={[styles.timeOptionText, rescheduleTime === timeOpt.label && styles.selectedTimeOptionText]}>
+                                                    {timeOpt.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            <TouchableOpacity
+                                style={styles.verifyButton}
+                                onPress={handleRescheduleSubmit}
+                                disabled={rescheduleLoading}
+                            >
+                                {rescheduleLoading ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.verifyButtonText}>Reschedule</Text>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -844,6 +1138,23 @@ const styles = StyleSheet.create({
         elevation: 5,
         position: 'relative',
     },
+    rescheduleModalContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        width: '100%',
+        maxWidth: 420,
+        maxHeight: '85%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+        position: 'relative',
+    },
+    rescheduleScrollView: {
+        maxHeight: '100%',
+    },
     closeButton: {
         position: 'absolute',
         top: 12,
@@ -893,6 +1204,102 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    timePickerButton: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    timePickerText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    placeholderText: {
+        color: '#999',
+    },
+    timePickerContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        marginBottom: 16,
+        maxHeight: 200,
+        overflow: 'hidden',
+    },
+    timePickerScroll: {
+        maxHeight: 200,
+    },
+    timeOption: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    selectedTimeOption: {
+        backgroundColor: '#2196F3',
+    },
+    timeOptionText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    selectedTimeOptionText: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    inputContainer: {
+        marginBottom: 16,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#333',
+        marginBottom: 8,
+    },
+    dateInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: '#f5f5f5',
+        gap: 8,
+    },
+    dateText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    calendarContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 0,
+        paddingTop: 8,
+        paddingBottom: 8,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        width: '100%',
+        overflow: 'hidden',
+    },
+    closeCalendarButton: {
+        marginTop: 8,
+        marginBottom: 8,
+        alignSelf: 'flex-end',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        marginRight: 16,
+    },
+    closeCalendarText: {
+        color: '#2196F3',
+        fontWeight: '600',
+        fontSize: 14,
     },
 });
 

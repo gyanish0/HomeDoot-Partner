@@ -12,7 +12,7 @@ const DashboardScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [todayJobs, setTodayJobs] = useState([]);
     const [availabilityDates, setAvailabilityDates] = useState([]);
-
+    console.log(dashboardData.Dashboard, 'dashboardData')
     useEffect(() => {
         loadDashboardData();
     }, []);

@@ -382,6 +382,17 @@ export const sendJobStartOTP = async (orderNo) => {
         throw error;
     }
 };
+export const sendJobStopOTP = async (orderNo) => {
+    try {
+        const response = await axiosInstance.post('order/job-stop/send-otp', {
+            order_no: orderNo
+        });
+        return response;
+    } catch (error) {
+        console.error('Error sending job stop OTP:', error);
+        throw error;
+    }
+};
 
 export const resendJobStartOTP = async (orderNo) => {
     try {
@@ -404,6 +415,34 @@ export const verifyJobStartOTP = async (orderNo, otp) => {
         return response;
     } catch (error) {
         console.error('Error verifying job start OTP:', error);
+        throw error;
+    }
+};
+export const verifyJobStopOTP = async (orderNo, otp) => {
+    try {
+        const response = await axiosInstance.post('order/job-stop/verify-otp', {
+            order_no: orderNo,
+            otp: otp
+        });
+        return response;
+    } catch (error) {
+        console.error('Error verifying job stop OTP:', error);
+        throw error;
+    }
+};
+
+export const rescheduleVendorOrder = async (orderNo, serviceDate, serviceTime, vendorId) => {
+    console.log('Rescheduling order:', { orderNo, serviceDate, serviceTime, vendorId });
+    try {
+        const response = await axiosInstance.post('order/reschedule', {
+            order_no: orderNo,
+            service_date: serviceDate,
+            service_time: serviceTime,
+            vid: vendorId
+        });
+        return response;
+    } catch (error) {
+        console.error('Error rescheduling order:', error);
         throw error;
     }
 };
@@ -556,4 +595,7 @@ export default {
     sendJobStartOTP,
     resendJobStartOTP,
     verifyJobStartOTP,
+    sendJobStopOTP,
+    verifyJobStopOTP,
+    rescheduleVendorOrder,
 };

@@ -1,62 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { mockCommissionData } from '../data/mockData';
 import Colors from '../constants/Colors';
-import {
-    getVendorCommissionCurrentMonth,
-    getVendorCommissionCustomRange,
-} from '../services/vendorService';
+import { getVendorCommissionCurrentMonth } from '../services/vendorService';
 
 const CommissionScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [commissionData, setCommissionData] = useState(mockCommissionData.data);
-    const [fromDate, setFromDate] = useState(new Date(2026, 4, 1)); // May 1, 2026
-    const [toDate, setToDate] = useState(new Date(2026, 4, 31)); // May 31, 2026
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [datePickerMode, setDatePickerMode] = useState('from'); // 'from' or 'to'
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         loadCommissionData();
     }, []);
 
-    const formatDate = (date) => {
-        if (!date) return '';
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    };
-
-    const formatDateForAPI = (date) => {
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
-
-    const loadCommissionData = async (customRange = false) => {
+    const loadCommissionData = async () => {
         setLoading(true);
         try {
-            let response;
-            if (customRange) {
-                const fromDateStr = formatDateForAPI(fromDate);
-                const toDateStr = formatDateForAPI(toDate);
-                response = await getVendorCommissionCustomRange(fromDateStr, toDateStr);
-            } else {
-                response = await getVendorCommissionCurrentMonth();
-            }
-            if (response?.success && response?.data) {
-                setCommissionData(response.data);
+            const response = await getVendorCommissionCurrentMonth();
+
+            console.log(response, 'Commission API Response');
+
+            if (response?.status && response?.data) {
+                const invoiceItems = response.data.invoice_items || [];
+                const discounts = response.data.discounts || [];
+
+                // Calculate summary totals
+                const totalCommission = invoiceItems.reduce((sum, item) => sum + (Number(item.commission) || 0), 0);
+                const totalTaxOnCommission = invoiceItems.reduce((sum, item) => sum + (Number(item.tax_on_commission) || 0), 0);
+                const totalAmount = invoiceItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
+                const totalDiscount = discounts.reduce((sum, disc) => sum + (Number(disc.discount_total) || 0), 0);
+
+                const formattedData = {
+                    transactions: invoiceItems,
+                    summary: {
+                        total_commission_paid: totalCommission,
+                        total_earnings: totalAmount,
+                        pending_commission: totalCommission + totalTaxOnCommission,
+                        total_discount: totalDiscount,
+                    }
+                };
+
+                setCommissionData(formattedData);
             } else {
                 // Fallback to mock data if API fails
                 setCommissionData(mockCommissionData.data);
             }
         } catch (error) {
             console.error('Error loading commission data:', error);
-            Alert.alert('Error', 'Failed to load commission data. Using local data.');
             setCommissionData(mockCommissionData.data);
         } finally {
             setLoading(false);
@@ -68,139 +58,97 @@ const CommissionScreen = () => {
         loadCommissionData().finally(() => setRefreshing(false));
     };
 
-    const handleSearch = () => {
-        if (fromDate > toDate) {
-            Alert.alert('Invalid Date Range', 'From date cannot be after To date');
-            return;
-        }
-        loadCommissionData(true);
+    const renderCommissionItem = ({ item }) => {
+        const itemTotal = Number(item.total_amount) || 0;
+        const itemPrice = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 1;
+        const commissionAmount = Number(item.commission) || 0;
+        const taxOnCommission = Number(item.tax_on_commission) || 0;
+        const gstPercentage = Number(item.gst_percentage) || 0;
+        const discount = Number(item.discount) || 0;
+
+        return (
+            <View style={styles.commissionCard}>
+                <View style={styles.cardHeader}>
+                    <View>
+                        <Text style={styles.orderNumber}>Order ID: {item.order_no}</Text>
+                        <Text style={styles.serviceName}>{item.service_name}</Text>
+                        {item.status_from_vendor && (
+                            <Text style={styles.statusText}>Status: {item.status_from_vendor}</Text>
+                        )}
+                    </View>
+                </View>
+
+                <View style={styles.cardBody}>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Item Name:</Text>
+                        <Text style={styles.detailValue}>{item.item_name || item.service_name}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Qty:</Text>
+                        <Text style={styles.detailValue}>{quantity}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Rate:</Text>
+                        <Text style={styles.detailValue}>{itemPrice}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Total:</Text>
+                        <Text style={styles.detailValue}>{itemTotal}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Discount:</Text>
+                        <Text style={styles.detailValue}>{discount}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Commission:</Text>
+                        <Text style={styles.detailValue}>{commissionAmount.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>GST on Commission (%):</Text>
+                        <Text style={styles.detailValue}>{gstPercentage} ({gstPercentage}%)</Text>
+                    </View>
+                </View>
+            </View>
+        );
     };
 
-    const handleClear = () => {
-        setFromDate(new Date());
-        setToDate(new Date());
-        loadCommissionData(false);
+    const renderSummary = () => {
+        const totalCommission = Number(commissionData?.summary?.total_commission_paid || 0);
+        const totalEarnings = Number(commissionData?.summary?.total_earnings || 0);
+        const totalDiscount = Number(commissionData?.summary?.total_discount || 0);
+
+        // Calculate Left Total (Total Earnings - Total Discount)
+        const leftTotal = totalEarnings - totalDiscount;
+
+        // Right Total is Admin Commission
+        const rightTotal = totalCommission;
+
+        // Partner Total (Left Total - Admin Commission)
+        const partnerTotal = leftTotal - rightTotal;
+
+        return (
+            <View style={styles.summaryContainer}>
+                <View style={styles.summaryRow}>
+                    <View style={styles.leftColumn}>
+                        <Text style={styles.summaryLabel}>Left Total:</Text>
+                        <Text style={styles.summaryValue}>{leftTotal.toFixed(4)}</Text>
+                    </View>
+                    <View style={styles.rightColumn}>
+                        <Text style={styles.summaryLabel}>Right Total (Admin Commission):</Text>
+                        <Text style={styles.summaryValue}>{rightTotal.toFixed(2)}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.partnerTotalRow}>
+                    <Text style={styles.partnerTotalLabel}>Partner Total</Text>
+                    <Text style={styles.partnerTotalAmount}>{partnerTotal.toFixed(4)}</Text>
+                </View>
+
+                <Text style={styles.reverseNote}>Reverse Mechanism charge not applicable.</Text>
+            </View>
+        );
     };
-
-    const openDatePicker = (mode) => {
-        setDatePickerMode(mode);
-        setShowDatePicker(true);
-    };
-
-    const onDateChange = (selectedDate) => {
-        setShowDatePicker(false);
-
-        if (selectedDate) {
-            if (datePickerMode === 'from') {
-                setFromDate(selectedDate);
-            } else {
-                setToDate(selectedDate);
-            }
-        }
-    };
-
-    const onDatePickerCancel = () => {
-        setShowDatePicker(false);
-    };
-
-
-
-    const renderCommissionItem = ({ item }) => (
-        <View style={styles.commissionCard}>
-            <View style={styles.cardHeader}>
-                <View>
-                    <Text style={styles.orderNumber}>Order ID: {item.order_number}</Text>
-                    <Text style={styles.serviceName}>{item.service_name}</Text>
-                </View>
-            </View>
-
-            <View style={styles.cardBody}>
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Item Name:</Text>
-                    <Text style={styles.detailValue}>{item.service_name}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Qty:</Text>
-                    <Text style={styles.detailValue}>1</Text>
-                </View>
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Rate:</Text>
-                    <Text style={styles.detailValue}>₹{item.service_amount}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Total:</Text>
-                    <Text style={styles.detailValue}>₹{item.service_amount}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Discount:</Text>
-                    <Text style={styles.detailValue}>₹0</Text>
-                </View>
-            </View>
-
-            <View style={styles.cardFooter}>
-                <View style={styles.amountRow}>
-                    <Text style={styles.label}>Commission ({item.commission_percentage}%):</Text>
-                    <Text style={[styles.value, styles.commissionAmount]}>₹{item.commission_amount}</Text>
-                </View>
-                <View style={styles.amountRow}>
-                    <Text style={styles.label}>GST on Commission:</Text>
-                    <Text style={styles.value}>₹0 (0%)</Text>
-                </View>
-            </View>
-        </View>
-    );
-
-    const renderSummary = () => (
-        <View style={styles.summaryContainer}>
-            <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Left Total (Admin Commissioned):</Text>
-                <Text style={styles.totalAmount}>₹{commissionData?.summary?.total_commission_paid || 0}</Text>
-            </View>
-            <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Right Total (Admin Commissioned):</Text>
-                <Text style={styles.totalAmount}>₹{commissionData?.summary?.total_earnings || 0}</Text>
-            </View>
-            <View style={styles.totalRow}>
-                <Text style={styles.partnerTotalLabel}>Partner Total:</Text>
-                <Text style={styles.partnerTotalAmount}>₹{commissionData?.summary?.pending_commission || 0}</Text>
-            </View>
-            <Text style={styles.reverseNote}>Reverse Mechanism charge not applicable.</Text>
-        </View>
-    );
-
-    const renderDateFilters = () => (
-        <View style={styles.filterContainer}>
-            <Text style={styles.filterTitle}>Filter by Date Range</Text>
-            <View style={styles.dateInputRow}>
-                <View style={styles.dateInputContainer}>
-                    <Text style={styles.dateLabel}>From Date</Text>
-                    <TouchableOpacity
-                        style={styles.dateInput}
-                        onPress={() => openDatePicker('from')}
-                    >
-                        <Text style={styles.dateInputText}>{formatDate(fromDate)}</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.dateInputContainer}>
-                    <Text style={styles.dateLabel}>To Date</Text>
-                    <TouchableOpacity
-                        style={styles.dateInput}
-                        onPress={() => openDatePicker('to')}
-                    >
-                        <Text style={styles.dateInputText}>{formatDate(toDate)}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-            <View style={styles.buttonRow}>
-                <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-                    <Text style={styles.searchButtonText}>Search</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-                    <Text style={styles.clearButtonText}>Clear</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
 
     return (
         <View style={styles.container}>
@@ -208,23 +156,24 @@ const CommissionScreen = () => {
                 data={commissionData?.transactions || []}
                 renderItem={renderCommissionItem}
                 keyExtractor={(item) => item.id.toString()}
-                ListHeaderComponent={() => (
-                    <>
-                        {renderDateFilters()}
-                        {renderSummary()}
-                    </>
+                ListHeaderComponent={renderSummary}
+                ListEmptyComponent={() => (
+                    loading ? (
+                        <View style={styles.emptyContainer}>
+                            <ActivityIndicator size="large" color={Colors.primary} />
+                            <Text style={styles.emptySubText}>Loading commission data...</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>No commission data available</Text>
+                            <Text style={styles.emptySubText}>Check back later for commission updates</Text>
+                        </View>
+                    )
                 )}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
                 }
                 contentContainerStyle={styles.listContainer}
-            />
-            <DateTimePickerModal
-                isVisible={showDatePicker}
-                mode="date"
-                date={datePickerMode === 'from' ? fromDate : toDate}
-                onConfirm={onDateChange}
-                onCancel={onDatePickerCancel}
             />
         </View>
     );
@@ -238,75 +187,6 @@ const styles = StyleSheet.create({
     listContainer: {
         padding: 10,
     },
-    filterContainer: {
-        backgroundColor: Colors.white,
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 15,
-        elevation: 2,
-        shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-    },
-    filterTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: Colors.textPrimary,
-        marginBottom: 12,
-    },
-    dateInputRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 12,
-    },
-    dateInputContainer: {
-        flex: 1,
-    },
-    dateLabel: {
-        fontSize: 12,
-        color: Colors.textSecondary,
-        marginBottom: 6,
-    },
-    dateInput: {
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 6,
-        padding: 12,
-        backgroundColor: '#FAFAFA',
-    },
-    dateInputText: {
-        fontSize: 14,
-        color: Colors.textPrimary,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    searchButton: {
-        flex: 1,
-        backgroundColor: '#4DB8AC',
-        borderRadius: 6,
-        padding: 12,
-        alignItems: 'center',
-    },
-    searchButtonText: {
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    clearButton: {
-        flex: 1,
-        backgroundColor: '#BDBDBD',
-        borderRadius: 6,
-        padding: 12,
-        alignItems: 'center',
-    },
-    clearButtonText: {
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: '600',
-    },
     summaryContainer: {
         backgroundColor: Colors.white,
         borderRadius: 8,
@@ -318,22 +198,38 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 2,
     },
-    totalRow: {
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingBottom: 12,
+        marginBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.lightGray,
+    },
+    leftColumn: {
+        flex: 1,
+        paddingRight: 10,
+    },
+    rightColumn: {
+        flex: 1,
+        paddingLeft: 10,
+    },
+    summaryLabel: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        marginBottom: 4,
+    },
+    summaryValue: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: Colors.textPrimary,
+    },
+    partnerTotalRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.lightGray,
-    },
-    totalLabel: {
-        fontSize: 13,
-        color: Colors.textSecondary,
-    },
-    totalAmount: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: Colors.textPrimary,
+        marginBottom: 8,
     },
     partnerTotalLabel: {
         fontSize: 14,
@@ -349,7 +245,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Colors.textTertiary,
         fontStyle: 'italic',
-        marginTop: 12,
+        marginTop: 4,
     },
     commissionCard: {
         backgroundColor: Colors.white,
@@ -392,15 +288,14 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     statusText: {
-        color: Colors.white,
         fontSize: 11,
-        fontWeight: '600',
+        fontWeight: '500',
+        color: Colors.textSecondary,
+        marginTop: 4,
+        textTransform: 'capitalize',
     },
     cardBody: {
-        marginBottom: 10,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.lightGray,
+        marginBottom: 0,
     },
     detailRow: {
         flexDirection: 'row',
@@ -457,6 +352,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: Colors.successGreen,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        paddingHorizontal: 20,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        marginBottom: 8,
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: Colors.textTertiary,
+        textAlign: 'center',
     },
 });
 
