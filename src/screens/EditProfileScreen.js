@@ -374,12 +374,6 @@ const EditProfileScreen = ({ navigation }) => {
                             selectedDayColor="#9C27B0"
                             selectedDayTextColor="#FFFFFF"
                         />
-                        <TouchableOpacity
-                            onPress={() => setActivePicker(null)}
-                            style={styles.closeCalendarButton}
-                        >
-                            <Text style={styles.closeCalendarText}>Close</Text>
-                        </TouchableOpacity>
                     </View>
                 )}
 

@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, ActivityIndicator } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import CalendarPicker from 'react-native-calendar-picker';
 import Colors from '../constants/Colors';
+import { updateVendorLeave } from '../services/vendorService';
+import { useAuth } from '../context/AuthContext';
 
 const CalendarScreen = () => {
-    const [fromDate, setFromDate] = useState(null);
-    const [toDate, setToDate] = useState(null);
-    const [tempFromDate, setTempFromDate] = useState(null);
-    const [tempToDate, setTempToDate] = useState(null);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const { user } = useAuth();
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [startDateText, setStartDateText] = useState('');
+    const [endDateText, setEndDateText] = useState('');
+    const [activePicker, setActivePicker] = useState(null);
+    const [dateError, setDateError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const formatDate = (date) => {
         if (!date) return '';
@@ -18,123 +24,78 @@ const CalendarScreen = () => {
         return `${year}-${month}-${day}`;
     };
 
-    const formatDisplayDate = () => {
-        if (!fromDate && !toDate) return 'Select date range';
-        if (fromDate && !toDate) return formatDate(fromDate);
-        return `${formatDate(fromDate)} to ${formatDate(toDate)}`;
-    };
-
-    const handleDateRangePress = () => {
-        setTempFromDate(fromDate);
-        setTempToDate(toDate);
-        setShowDatePicker(true);
-    };
-
     const handleDateSelect = (date) => {
-        if (!tempFromDate || (tempFromDate && tempToDate)) {
-            // Start new selection
-            setTempFromDate(date);
-            setTempToDate(null);
-        } else {
-            // Select end date
-            if (date < tempFromDate) {
-                setTempFromDate(date);
-                setTempToDate(tempFromDate);
+        const jsDate = date instanceof Date ? date : new Date(date);
+        const formatted = formatDate(jsDate);
+
+        if (activePicker === 'start') {
+            setStartDate(jsDate);
+            setStartDateText(formatted);
+            if (endDate && jsDate > endDate) {
+                setDateError('Start date cannot be after end date');
             } else {
-                setTempToDate(date);
+                setDateError('');
+            }
+        } else if (activePicker === 'end') {
+            setEndDate(jsDate);
+            setEndDateText(formatted);
+            if (startDate && startDate > jsDate) {
+                setDateError('End date cannot be before start date');
+            } else {
+                setDateError('');
             }
         }
+        setActivePicker(null);
     };
 
-    const handleApply = () => {
-        setFromDate(tempFromDate);
-        setToDate(tempToDate);
-        setShowDatePicker(false);
-    };
-
-    const handleClear = () => {
-        setTempFromDate(null);
-        setTempToDate(null);
-    };
-
-    const handleClosePicker = () => {
-        setShowDatePicker(false);
-    };
-
-    const handleUpdateAvailability = () => {
-        if (!fromDate || !toDate) {
-            Alert.alert('Error', 'Please select a date range');
+    const handleUpdateAvailability = async () => {
+        if (!startDate || !endDate) {
+            Alert.alert('Error', 'Please select both start and end dates');
             return;
         }
-        Alert.alert(
-            'Update Availability',
-            `Leave period set from ${formatDate(fromDate)} to ${formatDate(toDate)}`,
-            [{ text: 'OK' }]
-        );
-    };
 
-    const getDaysInMonth = (date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
-
-        const days = [];
-
-        // Add empty slots for days before month starts
-        for (let i = 0; i < startingDayOfWeek; i++) {
-            const prevMonthDate = new Date(year, month, -startingDayOfWeek + i + 1);
-            days.push({ date: prevMonthDate, isCurrentMonth: false });
+        if (startDate > endDate) {
+            setDateError('Start date cannot be after end date');
+            return;
         }
 
-        // Add days of current month
-        for (let i = 1; i <= daysInMonth; i++) {
-            days.push({ date: new Date(year, month, i), isCurrentMonth: true });
+        try {
+            setLoading(true);
+            setDateError('');
+
+            const leaveData = {
+                non_availability_from: formatDate(startDate),
+                non_availability_to: formatDate(endDate),
+            };
+
+            const response = await updateVendorLeave(leaveData);
+            console.log(response, '=====response====11=response')
+            if (response.success || response.message) {
+                Alert.alert(
+                    'Success',
+                    `Leave period updated successfully from ${formatDate(startDate)} to ${formatDate(endDate)}`,
+                    [{
+                        text: 'OK',
+                        onPress: () => {
+                            setStartDate(null);
+                            setEndDate(null);
+                            setStartDateText('');
+                            setEndDateText('');
+                        }
+                    }]
+                );
+            } else {
+                Alert.alert('Error', 'Failed to update leave period. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error updating leave period:', error);
+            Alert.alert(
+                'Error',
+                error.response?.data?.message || error.message || 'Failed to update leave period. Please try again.'
+            );
+        } finally {
+            setLoading(false);
         }
-
-        // Add empty slots for days after month ends
-        const remainingSlots = 42 - days.length;
-        for (let i = 1; i <= remainingSlots; i++) {
-            const nextMonthDate = new Date(year, month + 1, i);
-            days.push({ date: nextMonthDate, isCurrentMonth: false });
-        }
-
-        return days;
-    };
-
-    const getMonthName = (date) => {
-        return date.toLocaleString('default', { month: 'short', year: 'numeric' });
-    };
-
-    const previousMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-    };
-
-    const nextMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-    };
-
-    const isDateInRange = (date) => {
-        if (!tempFromDate || !tempToDate) return false;
-        const time = date.getTime();
-        return time >= tempFromDate.getTime() && time <= tempToDate.getTime();
-    };
-
-    const isDateSelected = (date) => {
-        if (!tempFromDate) return false;
-        const time = date.getTime();
-        if (tempFromDate && time === tempFromDate.getTime()) return true;
-        if (tempToDate && time === tempToDate.getTime()) return true;
-        return false;
-    };
-
-    const isSameDay = (date1, date2) => {
-        if (!date1 || !date2) return false;
-        return date1.getFullYear() === date2.getFullYear() &&
-            date1.getMonth() === date2.getMonth() &&
-            date1.getDate() === date2.getDate();
     };
 
     return (
@@ -147,19 +108,48 @@ const CalendarScreen = () => {
 
             {/* Content */}
             <View style={styles.content}>
-                {/* Select Date Range Section */}
+                {/* Date Range for leave mark */}
+                <View style={styles.row}>
+                    <View style={[styles.inputContainer, styles.halfWidth]}>
+                        <Text style={styles.label}>Start Date</Text>
+                        <TouchableOpacity
+                            style={styles.dateInput}
+                            onPress={() => setActivePicker('start')}
+                        >
+                            <Icon name="calendar" size={18} color="#666" />
+                            <Text style={styles.dateText}>
+                                {startDateText || 'YYYY-MM-DD'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
-                <View style={styles.dateRangeContainer}>
-                    <TouchableOpacity
-                        style={styles.dateRangeDisplay}
-                        onPress={handleDateRangePress}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={styles.dateRangeText}>
-                            {formatDisplayDate()}
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={[styles.inputContainer, styles.halfWidth]}>
+                        <Text style={styles.label}>End Date</Text>
+                        <TouchableOpacity
+                            style={styles.dateInput}
+                            onPress={() => setActivePicker('end')}
+                        >
+                            <Icon name="calendar" size={18} color="#666" />
+                            <Text style={styles.dateText}>
+                                {endDateText || 'YYYY-MM-DD'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
+                {dateError ? <Text style={styles.errorText}>{dateError}</Text> : null}
+
+                {activePicker && (
+                    <View style={styles.calendarContainer}>
+                        <CalendarPicker
+                            minDate={activePicker === 'end' && startDate ? startDate : new Date()}
+                            selectedStartDate={startDate}
+                            onDateChange={handleDateSelect}
+                            todayBackgroundColor="#E0E0E0"
+                            selectedDayColor="#9C27B0"
+                            selectedDayTextColor="#FFFFFF"
+                        />
+                    </View>
+                )}
 
                 {/* Note */}
                 <Text style={styles.noteText}>
@@ -168,120 +158,35 @@ const CalendarScreen = () => {
 
                 {/* Update Availability Button */}
                 <TouchableOpacity
-                    style={styles.updateButton}
+                    style={[styles.updateButton, loading && styles.updateButtonDisabled]}
                     onPress={handleUpdateAvailability}
+                    disabled={loading}
                 >
-                    <Text style={styles.updateButtonIcon}>💾</Text>
-                    <Text style={styles.updateButtonText}>Update Availability</Text>
+                    {loading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                        <>
+                            <Icon name="content-save" size={20} color="#fff" />
+                            <Text style={styles.updateButtonText}>Update Availability</Text>
+                        </>
+                    )}
                 </TouchableOpacity>
 
                 {/* Date Display at Bottom */}
-                {fromDate && toDate && (
+                {startDate && endDate && (
                     <View style={styles.dateDisplayContainer}>
                         <View style={styles.dateDisplayBox}>
                             <Text style={styles.dateDisplayLabel}>FROM DATE</Text>
-                            <Text style={styles.dateDisplayValue}>{formatDate(fromDate)}</Text>
+                            <Text style={styles.dateDisplayValue}>{formatDate(startDate)}</Text>
                         </View>
 
                         <View style={styles.dateDisplayBox}>
                             <Text style={styles.dateDisplayLabel}>TO DATE</Text>
-                            <Text style={styles.dateDisplayValue}>{formatDate(toDate)}</Text>
+                            <Text style={styles.dateDisplayValue}>{formatDate(endDate)}</Text>
                         </View>
                     </View>
                 )}
             </View>
-
-            {/* Calendar Date Picker Modal */}
-            <Modal
-                visible={showDatePicker}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={handleClosePicker}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.calendarModalContent}>
-                        {/* Month Navigation */}
-                        <View style={styles.monthNavigation}>
-                            <TouchableOpacity onPress={previousMonth} style={styles.navButton}>
-                                <Text style={styles.navButtonText}>‹</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.monthTitle}>{getMonthName(currentMonth)}</Text>
-                            <TouchableOpacity onPress={nextMonth} style={styles.navButton}>
-                                <Text style={styles.navButtonText}>›</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Weekday Headers */}
-                        <View style={styles.weekdayHeader}>
-                            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, index) => (
-                                <View key={index} style={styles.weekdayCell}>
-                                    <Text style={styles.weekdayText}>{day}</Text>
-                                </View>
-                            ))}
-                        </View>
-
-                        {/* Calendar Grid */}
-                        <View style={styles.calendarGrid}>
-                            {getDaysInMonth(currentMonth).map((dayObj, index) => {
-                                const isInRange = isDateInRange(dayObj.date);
-                                const isSelected = isDateSelected(dayObj.date);
-
-                                return (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.dayCell,
-                                            isInRange && styles.dayCellInRange,
-                                            isSelected && styles.dayCellSelected,
-                                        ]}
-                                        onPress={() => handleDateSelect(dayObj.date)}
-                                        disabled={!dayObj.isCurrentMonth}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.dayText,
-                                                !dayObj.isCurrentMonth && styles.dayTextDisabled,
-                                                isSelected && styles.dayTextSelected,
-                                            ]}
-                                        >
-                                            {dayObj.date.getDate()}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-
-                        {/* Selected Range Display */}
-                        <View style={styles.rangeDisplay}>
-                            <Text style={styles.rangeText}>
-                                {tempFromDate && tempToDate
-                                    ? `${formatDate(tempFromDate)} - ${formatDate(tempToDate)}`
-                                    : tempFromDate
-                                        ? `${formatDate(tempFromDate)} - Select end date`
-                                        : 'Select start date'}
-                            </Text>
-                        </View>
-
-                        {/* Action Buttons */}
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={styles.clearButton}
-                                onPress={handleClear}
-                            >
-                                <Text style={styles.clearButtonText}>Clear</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.applyButton, (!tempFromDate || !tempToDate) && styles.applyButtonDisabled]}
-                                onPress={handleApply}
-                                disabled={!tempFromDate || !tempToDate}
-                            >
-                                <Text style={styles.applyButtonText}>Apply</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </ScrollView>
     );
 };
@@ -301,15 +206,6 @@ const styles = StyleSheet.create({
         borderBottomColor: '#E0E0E0',
         marginTop: 16,
     },
-    headerIcon: {
-        width: 48,
-        height: 48,
-        backgroundColor: '#9C27B0',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
     headerIconText: {
         fontSize: 24,
         marginRight: 16,
@@ -322,42 +218,65 @@ const styles = StyleSheet.create({
     content: {
         padding: 20,
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#666666',
+    inputContainer: {
         marginBottom: 16,
     },
-    dateRangeContainer: {
+    label: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#333',
+        marginBottom: 6,
+    },
+    row: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
         gap: 12,
     },
-    calendarIconBox: {
-        width: 80,
-        height: 56,
-        backgroundColor: '#A94442',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    calendarButtonIcon: {
-        fontSize: 28,
-        color: '#FFFFFF',
-    },
-    dateRangeDisplay: {
+    halfWidth: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 8,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
     },
-    dateRangeText: {
-        fontSize: 16,
-        color: '#333333',
-        fontWeight: '500',
+    dateInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#DDD',
+        borderRadius: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        gap: 8,
+    },
+    dateText: {
+        fontSize: 14,
+        color: '#333',
+    },
+    calendarContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 12,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    closeCalendarButton: {
+        marginTop: 12,
+        alignSelf: 'flex-end',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    closeCalendarText: {
+        color: '#9C27B0',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    errorText: {
+        color: '#FF0000',
+        fontSize: 12,
+        marginTop: 4,
+        marginBottom: 8,
     },
     noteText: {
         fontSize: 14,
@@ -379,10 +298,11 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
+        gap: 8,
     },
-    updateButtonIcon: {
-        fontSize: 20,
-        marginRight: 8,
+    updateButtonDisabled: {
+        backgroundColor: '#CCCCCC',
+        opacity: 0.6,
     },
     updateButtonText: {
         color: '#FFFFFF',
@@ -409,133 +329,6 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '600',
         color: '#333333',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    calendarModalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 20,
-        width: '100%',
-        maxWidth: 500,
-        maxHeight: '80%',
-    },
-    monthNavigation: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 10,
-    },
-    navButton: {
-        padding: 10,
-        minWidth: 40,
-        alignItems: 'center',
-    },
-    navButtonText: {
-        fontSize: 28,
-        color: '#333333',
-        fontWeight: 'bold',
-    },
-    monthTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333333',
-    },
-    weekdayHeader: {
-        flexDirection: 'row',
-        marginBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
-        paddingBottom: 10,
-    },
-    weekdayCell: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    weekdayText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#666666',
-    },
-    calendarGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    dayCell: {
-        width: '14.28%',
-        aspectRatio: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 2,
-    },
-    dayCellInRange: {
-        backgroundColor: '#E3F2FD',
-    },
-    dayCellSelected: {
-        backgroundColor: '#5B8DB8',
-        borderRadius: 20,
-    },
-    dayText: {
-        fontSize: 16,
-        color: '#333333',
-    },
-    dayTextDisabled: {
-        color: '#CCCCCC',
-    },
-    dayTextSelected: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-    },
-    rangeDisplay: {
-        padding: 16,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 8,
-        marginVertical: 16,
-        alignItems: 'center',
-    },
-    rangeText: {
-        fontSize: 14,
-        color: '#333333',
-        fontWeight: '500',
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    clearButton: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 8,
-        padding: 14,
-        alignItems: 'center',
-    },
-    clearButtonText: {
-        color: '#666666',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    applyButton: {
-        flex: 1,
-        backgroundColor: '#9C27B0',
-        borderRadius: 8,
-        padding: 14,
-        alignItems: 'center',
-    },
-    applyButtonDisabled: {
-        backgroundColor: '#CCCCCC',
-    },
-    applyButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
     },
 });
 

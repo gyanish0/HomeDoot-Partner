@@ -1,69 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView, Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchDashboard } from '../store/slices/authSlice';
+import { getVendorOrderTodayDate } from '../services/vendorService';
 import Colors from '../constants/Colors';
 
 const DashboardScreen = ({ navigation }) => {
     const dispatch = useDispatch();
-    const { user, dashboardData } = useSelector((state) => state.auth);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [todayJobs, setTodayJobs] = useState([]);
     const [availabilityDates, setAvailabilityDates] = useState([]);
-    console.log(dashboardData.Dashboard, 'dashboardData')
+    const [todayOrders, setTodayOrders] = useState(null);
+    const [pendingJobs, setPendingJobs] = useState([]);
+
+    // Animation for skeleton
+    const shimmerAnimation = useRef(new Animated.Value(0)).current;
+
     useEffect(() => {
         loadDashboardData();
     }, []);
 
-    const loadDashboardData = async () => {
+    useEffect(() => {
+        if (loading) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(shimmerAnimation, {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(shimmerAnimation, {
+                        toValue: 0,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        }
+    }, [loading]);
+
+    const loadDashboardData = async (isRefreshing = false) => {
+        if (!isRefreshing) {
+            setLoading(true);
+        }
         try {
-            // Fetch dashboard data from API
-            await dispatch(fetchDashboard()).unwrap();
+            const result = await dispatch(fetchDashboard()).unwrap();
+
+            // Fetch today's orders
+            let todayOrdersResponse = null;
+            try {
+                todayOrdersResponse = await getVendorOrderTodayDate();
+                console.log('Today orders response:', todayOrdersResponse);
+                if (todayOrdersResponse?.status && todayOrdersResponse?.data) {
+                    setTodayOrders(todayOrdersResponse.data);
+                }
+            } catch (todayOrdersError) {
+                console.error('Error loading today orders:', todayOrdersError);
+            }
+
+            // Generate availability dates based on vendor details
+            if (result?.VendorDetails) {
+                const vendorDetails = result.VendorDetails;
+                const nonAvailableFrom = vendorDetails.non_availability_from ? new Date(vendorDetails.non_availability_from) : null;
+                const nonAvailableTo = vendorDetails.non_availability_to ? new Date(vendorDetails.non_availability_to) : null;
+
+                // Generate next 14 days
+                const dates = [];
+                const today = new Date();
+
+                for (let i = 0; i < 14; i++) {
+                    const currentDate = new Date(today);
+                    currentDate.setDate(today.getDate() + i);
+
+                    // Check if this date falls in non-availability range
+                    let isAvailable = true;
+                    if (nonAvailableFrom && nonAvailableTo) {
+                        isAvailable = !(currentDate >= nonAvailableFrom && currentDate <= nonAvailableTo);
+                    }
+
+                    // Format date as "Day, Mon DD"
+                    const formattedDate = currentDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
+                    dates.push({
+                        id: i + 1,
+                        date: formattedDate,
+                        available: isAvailable
+                    });
+                }
+
+                setAvailabilityDates(dates);
+            }
+
+            // Process today's jobs from today orders API
+            if (todayOrdersResponse?.status && todayOrdersResponse?.data) {
+                const data = todayOrdersResponse.data;
+                const statusColors = {
+                    'completed': '#4CAF50',
+                    'assigned': '#FF9800',
+                    'cancelled': '#F44336',
+                    'pending': '#2196F3'
+                };
+
+                // Process assigned orders (for "more jobs today" section)
+                if (data.assignedOrders && Array.isArray(data.assignedOrders)) {
+                    const assignedJobs = data.assignedOrders.map((order) => {
+                        // Format service time
+                        let timeDisplay = 'Today';
+                        if (order.service_time) {
+                            const hour = parseInt(order.service_time);
+                            if (hour >= 0 && hour < 24) {
+                                timeDisplay = `${hour}:00`;
+                            }
+                        }
+
+                        return {
+                            id: order.id,
+                            time: timeDisplay,
+                            customerName: `Order #${order.order_no}`,
+                            status: order.order_status?.toUpperCase() || 'ASSIGNED',
+                            statusColor: statusColors[order.order_status?.toLowerCase()] || '#FF9800'
+                        };
+                    });
+                    setTodayJobs(assignedJobs);
+                }
+
+                // Process pending orders (for "no new jobs" section)
+                if (data.pendingOrders && Array.isArray(data.pendingOrders)) {
+                    const pending = data.pendingOrders.map((order) => {
+                        // Format service time
+                        let timeDisplay = 'Today';
+                        if (order.service_time) {
+                            const hour = parseInt(order.service_time);
+                            if (hour >= 0 && hour < 24) {
+                                timeDisplay = `${hour}:00`;
+                            }
+                        }
+
+                        // Get customer name from the customers object if available
+                        const customerName = order.customers?.name || `Order #${order.order_no}`;
+
+                        return {
+                            id: order.id,
+                            time: timeDisplay,
+                            customerName: customerName,
+                            status: order.order_status?.toUpperCase() || 'PENDING',
+                            statusColor: statusColors[order.order_status?.toLowerCase()] || '#2196F3'
+                        };
+                    });
+                    setPendingJobs(pending);
+                }
+            } else if (result?.Dashboard) {
+                // Fallback to dashboard data if today orders API doesn't return data
+                const jobs = result.Dashboard.map((item, index) => {
+                    const statusColors = {
+                        'completed': '#4CAF50',
+                        'assigned': '#FF9800',
+                        'cancelled': '#F44336',
+                        'pending': '#2196F3'
+                    };
+
+                    return {
+                        id: index + 1,
+                        time: 'Today',
+                        customerName: `${item.status_count} order(s)`,
+                        status: item.order_status.toUpperCase(),
+                        statusColor: statusColors[item.order_status.toLowerCase()] || '#666'
+                    };
+                });
+                setTodayJobs(jobs);
+            }
         } catch (error) {
             console.error('Dashboard load error:', error);
-        }
-
-        // Mock today's jobs - replace with actual data from dashboardData
-        const mockTodayJobs = [
-            {
-                id: 1,
-                time: 'Today 12:30 PM',
-                customerName: 'Priyanka naik',
-                status: 'CANCELLED',
-                statusColor: '#F44336'
-            },
-            {
-                id: 2,
-                time: 'Today 02:00 PM',
-                customerName: 'Leenali',
-                status: 'CANCELLED',
-                statusColor: '#F44336'
+        } finally {
+            if (!isRefreshing) {
+                setLoading(false);
             }
-        ];
-        setTodayJobs(mockTodayJobs);
-
-        // Mock availability dates - replace with API call
-        const mockAvailability = [
-            { id: 1, date: 'Fri, Jan 23', available: true },
-            { id: 2, date: 'Sat, Jan 24', available: true },
-            { id: 3, date: 'Sun, Jan 25', available: false },
-            { id: 4, date: 'Mon, Jan 26', available: true },
-            { id: 5, date: 'Tue, Jan 27', available: true },
-            { id: 6, date: 'Wed, Jan 28', available: false },
-            { id: 7, date: 'Thu, Jan 29', available: true },
-            { id: 8, date: 'Fri, Jan 30', available: true },
-            { id: 9, date: 'Sat, Jan 31', available: true },
-            { id: 10, date: 'Sun, Feb 1', available: false }
-        ];
-        setAvailabilityDates(mockAvailability);
+        }
     };
 
-    const onRefresh = () => {
+    const onRefresh = async () => {
         setRefreshing(true);
-        loadDashboardData();
-        setTimeout(() => setRefreshing(false), 1000);
+        await loadDashboardData(true);
+        setRefreshing(false);
     };
 
     const getGreeting = () => {
@@ -73,79 +197,163 @@ const DashboardScreen = ({ navigation }) => {
         return 'Good evening';
     };
 
-    if (loading) {
+    // Skeleton loader component
+    const SkeletonLoader = () => {
+        const opacity = shimmerAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.3, 0.7],
+        });
+
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+            <View style={styles.skeletonContainer}>
+                {/* Skeleton Greeting Banner */}
+                <Animated.View style={[styles.skeletonBanner, { opacity }]}>
+                    <View style={styles.skeletonBannerText}>
+                        <Animated.View style={[styles.skeletonBox, { width: '60%', height: 20, marginBottom: 8, opacity }]} />
+                        <Animated.View style={[styles.skeletonBox, { width: '80%', height: 16, opacity }]} />
+                    </View>
+                    <Animated.View style={[styles.skeletonBox, { width: 60, height: 60, borderRadius: 30, opacity }]} />
+                </Animated.View>
+
+                {/* Skeleton Availability Dates */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.availabilityContainer}
+                >
+                    {[1, 2, 3, 4].map((item) => (
+                        <Animated.View key={item} style={[styles.skeletonDateCard, { opacity }]}>
+                            <Animated.View style={[styles.skeletonBox, { width: '70%', height: 14, marginBottom: 8, opacity }]} />
+                            <Animated.View style={[styles.skeletonBox, { width: '90%', height: 12, opacity }]} />
+                        </Animated.View>
+                    ))}
+                </ScrollView>
+
+                {/* Skeleton Section Card */}
+                <Animated.View style={[styles.skeletonSectionCard, { opacity }]}>
+                    <Animated.View style={[styles.skeletonBox, { width: '40%', height: 18, opacity }]} />
+                    <Animated.View style={[styles.skeletonBox, { width: 24, height: 24, borderRadius: 12, opacity }]} />
+                </Animated.View>
+
+                {/* Skeleton Jobs Section */}
+                <Animated.View style={[styles.skeletonJobsSection, { opacity }]}>
+                    <View style={styles.skeletonJobHeader}>
+                        <Animated.View style={[styles.skeletonBox, { width: '50%', height: 18, opacity }]} />
+                        <Animated.View style={[styles.skeletonBox, { width: 24, height: 24, borderRadius: 12, opacity }]} />
+                    </View>
+                    {[1, 2].map((item) => (
+                        <View key={item} style={styles.skeletonJobCard}>
+                            <View style={{ flex: 1 }}>
+                                <Animated.View style={[styles.skeletonBox, { width: '50%', height: 16, marginBottom: 6, opacity }]} />
+                                <Animated.View style={[styles.skeletonBox, { width: '70%', height: 14, opacity }]} />
+                            </View>
+                            <Animated.View style={[styles.skeletonBox, { width: 80, height: 16, opacity }]} />
+                        </View>
+                    ))}
+                </Animated.View>
             </View>
         );
-    }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
-
-            <ScrollView
-                style={styles.scrollView}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
-                }
-            >
-                {/* Greeting Banner */}
-                <View style={styles.greetingBanner}>
-                    <View style={styles.greetingTextContainer}>
-                        <Text style={styles.greetingTitle}>{getGreeting()}, partner!</Text>
-                        <Text style={styles.greetingSubtitle}>Let's help you finish your workday</Text>
+            {loading ? (
+                <ScrollView style={styles.scrollView}>
+                    <SkeletonLoader />
+                </ScrollView>
+            ) : (
+                <ScrollView
+                    style={styles.scrollView}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+                    }
+                >
+                    {/* Greeting Banner */}
+                    <View style={styles.greetingBanner}>
+                        <View style={styles.greetingTextContainer}>
+                            <Text style={styles.greetingTitle}>{getGreeting()}, partner!</Text>
+                            <Text style={styles.greetingSubtitle}>Let's help you finish your workday</Text>
+                        </View>
+                        <Icon name="weather-sunset" size={60} color="#FFA726" />
                     </View>
-                    <Icon name="weather-sunset" size={60} color="#FFA726" />
-                </View>
 
-                {/* Availability Section */}
-                <View style={styles.availabilityContainer}>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={styles.availabilityScroll}
-                        contentContainerStyle={styles.availabilityScrollContent}
-                    >
-                        {availabilityDates.map((item, index) => (
-                            <View key={index} style={styles.dateCard}>
-                                <Text style={styles.dateText}>{item.date}</Text>
-                                <View style={styles.availableBadge}>
-                                    <Text style={[styles.availableText, { color: item.available ? '#4CAF50' : '#F44336' }]}>
-                                        • {item.available ? 'AVAILABLE' : 'UNAVAILABLE'}
+                    {/* Availability Section */}
+                    <View style={styles.availabilityContainer}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.availabilityScroll}
+                            contentContainerStyle={styles.availabilityScrollContent}
+                        >
+                            {availabilityDates.map((item, index) => (
+                                <View key={index} style={styles.dateCard}>
+                                    <Text style={styles.dateText}>{item.date}</Text>
+                                    <View style={styles.availableBadge}>
+                                        <Text style={[styles.availableText, { color: item.available ? '#4CAF50' : '#F44336' }]}>
+                                            • {item.available ? 'AVAILABLE' : 'UNAVAILABLE'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+
+                    {/* Pending Jobs Section */}
+                    {pendingJobs.length > 0 ? (
+                        <View style={styles.jobsSection}>
+                            <TouchableOpacity
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Ongoing')}
+                            >
+                                <Text style={styles.sectionTitle}>{pendingJobs.length} pending job{pendingJobs.length !== 1 ? 's' : ''}</Text>
+                                <Icon name="chevron-right" size={24} color="#666" />
+                            </TouchableOpacity>
+
+                            {pendingJobs.map((job) => (
+                                <View key={job.id} style={styles.jobCard}>
+                                    <View style={styles.jobCardLeft}>
+                                        <Text style={styles.jobTime}>{job.time}</Text>
+                                        <Text style={styles.jobCustomer}>{job.customerName}</Text>
+                                    </View>
+                                    <Text style={[styles.jobStatus, { color: job.statusColor }]}>
+                                        {job.status}
                                     </Text>
                                 </View>
-                            </View>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* No New Jobs */}
-                <TouchableOpacity style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>No new jobs</Text>
-                    <Icon name="chevron-right" size={24} color="#666" />
-                </TouchableOpacity>
-
-                {/* Today's Jobs Section */}
-                <View style={styles.jobsSection}>
-                    <TouchableOpacity style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>{todayJobs.length} more jobs today</Text>
-                        <Icon name="chevron-right" size={24} color="#666" />
-                    </TouchableOpacity>
-
-                    {todayJobs.map((job) => (
-                        <View key={job.id} style={styles.jobCard}>
-                            <View style={styles.jobCardLeft}>
-                                <Text style={styles.jobTime}>{job.time}</Text>
-                                <Text style={styles.jobCustomer}>{job.customerName}</Text>
-                            </View>
-                            <Text style={[styles.jobStatus, { color: job.statusColor }]}>
-                                {job.status}
-                            </Text>
+                            ))}
                         </View>
-                    ))}
-                </View>
-            </ScrollView>
+                    ) : (
+                        <TouchableOpacity style={styles.sectionCard}>
+                            <Text style={styles.sectionTitle}>No new jobs</Text>
+                            <Icon name="chevron-right" size={24} color="#666" />
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Today's Assigned Jobs Section */}
+                    {todayJobs.length > 0 && (
+                        <View style={styles.jobsSection}>
+                            <TouchableOpacity
+                                style={styles.sectionHeader}
+                                onPress={() => navigation.navigate('Ongoing')}
+                            >
+                                <Text style={styles.sectionTitle}>{todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''} assigned today</Text>
+                                <Icon name="chevron-right" size={24} color="#666" />
+                            </TouchableOpacity>
+
+                            {todayJobs.map((job) => (
+                                <View key={job.id} style={styles.jobCard}>
+                                    <View style={styles.jobCardLeft}>
+                                        <Text style={styles.jobTime}>{job.time}</Text>
+                                        <Text style={styles.jobCustomer}>{job.customerName}</Text>
+                                    </View>
+                                    <Text style={[styles.jobStatus, { color: job.statusColor }]}>
+                                        {job.status}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 };
@@ -326,7 +534,69 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
-    }
+    },
+    // Skeleton styles
+    skeletonContainer: {
+        flex: 1,
+    },
+    skeletonBanner: {
+        backgroundColor: '#f0f0f0',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 16,
+    },
+    skeletonBannerText: {
+        flex: 1,
+    },
+    skeletonBox: {
+        backgroundColor: '#e0e0e0',
+        borderRadius: 4,
+    },
+    skeletonDateCard: {
+        width: 150,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        padding: 12,
+        marginRight: 12,
+        marginLeft: 4,
+    },
+    skeletonSectionCard: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        marginHorizontal: 16,
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 8,
+    },
+    skeletonJobsSection: {
+        backgroundColor: '#f0f0f0',
+        marginHorizontal: 16,
+        marginTop: 16,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    skeletonJobHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    skeletonJobCard: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
 });
 
 export default DashboardScreen;

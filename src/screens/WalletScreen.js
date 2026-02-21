@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Ima
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
-import { getVendorWalletCreditTransactions } from '../services/vendorService';
+import { getVendorWalletCreditTransactions, getVendorWalletDebitTransactions } from '../services/vendorService';
 import { useSelector } from 'react-redux';
 
 const WalletScreen = () => {
@@ -13,21 +13,23 @@ const WalletScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('credit');
 
     useEffect(() => {
         loadTransactions();
-    }, []);
+    }, [activeTab]);
 
     const loadTransactions = async () => {
         setLoading(true);
         try {
             const perPage = 50;
-            const response = await getVendorWalletCreditTransactions(currentPage, perPage);
-            console.log(response, 'creditResponse')
+            const response = activeTab === 'debit'
+                ? await getVendorWalletCreditTransactions(currentPage, perPage)
+                : await getVendorWalletDebitTransactions(currentPage, perPage);
 
             if (response?.status && response?.data) {
                 const transformedTransactions = response.data.map(item => {
-                    const isCredit = item.payment_type === 'credit';
+                    const isCredit = activeTab === 'credit';
                     const date = new Date(item.created_at);
                     const formattedDate = date.toLocaleDateString('en-IN', {
                         day: 'numeric',
@@ -38,7 +40,7 @@ const WalletScreen = () => {
                     return {
                         id: item.id,
                         date: formattedDate,
-                        type: item.remark || (isCredit ? 'Commission' : 'Service charge'),
+                        type: item.remark || (!isCredit ? 'Commission' : 'Wallet Recharge'),
                         customer: item.order_no,
                         amount: `₹${parseFloat(item.amount).toFixed(2)}`,
                         isCredit: isCredit,
@@ -105,6 +107,26 @@ const WalletScreen = () => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Tabs Section */}
+                <View style={styles.tabsContainer}>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'credit' && styles.activeTab]}
+                        onPress={() => setActiveTab('credit')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'credit' && styles.activeTabText]}>
+                            Credit
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, activeTab === 'debit' && styles.activeTab]}
+                        onPress={() => setActiveTab('debit')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'debit' && styles.activeTabText]}>
+                            Debit
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Transactions List */}
                 <View style={styles.transactionsContainer}>
                     {loading ? (
@@ -163,6 +185,40 @@ const styles = StyleSheet.create({
     addButtonText: {
         color: '#fff',
         fontSize: 16,
+        fontWeight: '600',
+    },
+    tabsContainer: {
+        flexDirection: 'row',
+        marginHorizontal: 16,
+        marginBottom: 16,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        padding: 4,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderRadius: 6,
+    },
+    activeTab: {
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    tabText: {
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#666',
+    },
+    activeTabText: {
+        color: '#6C5CE7',
         fontWeight: '600',
     },
     transactionsContainer: {

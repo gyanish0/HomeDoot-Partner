@@ -260,6 +260,15 @@ export const getVendorWalletDebitTransactions = async (page = 1, perPage = 20) =
     }
 };
 
+export const getVendorOrderTodayDate = async () => {
+    try {
+        const response = await axiosInstance.get('https://doot.globleitsolutions.com/api/vendor-order-today-date/');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const getVendorCommissionCurrentMonth = async () => {
     try {
         const response = await axiosInstance.get('invoice/commission');
@@ -566,6 +575,57 @@ export const updateVendorBusinessDetails = async (businessData) => {
     }
 };
 
+export const updateVendorLeave = async (leaveData) => {
+    try {
+        const requestData = {
+            non_availability_from: leaveData.non_availability_from,
+            non_availability_to: leaveData.non_availability_to,
+        };
+
+        console.log('📤 Updating vendor leave period:', requestData);
+
+        const response = await axiosInstance.post('profile/update-leave', requestData);
+        return response;
+    } catch (error) {
+        console.error('Error updating leave period:', error);
+        throw error;
+    }
+};
+
+export const createWalletOrder = async (amount) => {
+    try {
+        const requestData = {
+            amount: amount,
+        };
+
+        console.log('📤 Creating wallet order:', requestData);
+
+        const response = await axiosInstance.post('wallet/add-amount', requestData);
+        return response;
+    } catch (error) {
+        console.error('Error creating wallet order:', error);
+        throw error;
+    }
+};
+
+export const verifyWalletPayment = async (paymentData) => {
+    try {
+        const requestData = {
+            razorpay_order_id: paymentData.razorpay_order_id,
+            razorpay_payment_id: paymentData.razorpay_payment_id,
+            razorpay_signature: paymentData.razorpay_signature,
+        };
+
+        console.log('📤 Verifying wallet payment:', requestData);
+
+        const response = await axiosInstance.post('wallet/verify-payment', requestData);
+        return response;
+    } catch (error) {
+        console.error('Error verifying wallet payment:', error);
+        throw error;
+    }
+};
+
 export default {
     getStates,
     getCities,
@@ -598,4 +658,7 @@ export default {
     sendJobStopOTP,
     verifyJobStopOTP,
     rescheduleVendorOrder,
+    updateVendorLeave,
+    createWalletOrder,
+    verifyWalletPayment,
 };

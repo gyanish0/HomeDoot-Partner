@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Colors from '../constants/Colors';
+import RazorpayCheckout from 'react-native-razorpay';
+import { useSelector } from 'react-redux';
+import { createWalletOrder, verifyWalletPayment } from '../services/vendorService';
+import RAZORPAY_CONFIG from '../config/razorpay';
 
 const AddMoneyScreen = ({ navigation }) => {
+    const user = useSelector((state) => state.auth.user);
     const [credits, setCredits] = useState('');
     const [selectedPayment, setSelectedPayment] = useState('online');
-
+    const [loading, setLoading] = useState(false);
     const quickSelectAmounts = [
         { value: 20, label: '20' },
         { value: 50, label: '50' },
@@ -23,19 +27,113 @@ const AddMoneyScreen = ({ navigation }) => {
         return creditValue;
     };
 
-    const handleAddCredits = () => {
+    const handleAddCredits = async () => {
         if (!credits || parseFloat(credits) <= 0) {
-            Alert.alert('Error', 'Please enter a valid number of credits');
+            Alert.alert('Error', 'Please enter a valid amount');
             return;
         }
 
-        // Handle payment logic here
-        Alert.alert('Success', `${credits} credits will be added to your wallet`, [
-            {
-                text: 'OK',
-                onPress: () => navigation.goBack(),
-            },
-        ]);
+        const amount = parseFloat(credits);
+
+        try {
+            setLoading(true);
+
+            // Step 1: Create Razorpay order
+            const orderResponse = await createWalletOrder(amount);
+
+            if (!orderResponse.success || !orderResponse.data?.razor_order_id) {
+                throw new Error(orderResponse.message || 'Failed to create order');
+            }
+
+            const { razor_order_id, amount: orderAmount } = orderResponse.data;
+
+            // Step 2: Open Razorpay checkout
+            const razorpayOptions = {
+                description: RAZORPAY_CONFIG.company.description,
+                image: RAZORPAY_CONFIG.company.logo,
+                currency: RAZORPAY_CONFIG.currency,
+                key: RAZORPAY_CONFIG.key,
+                amount: orderAmount * 100, // Amount in paise
+                order_id: razor_order_id,
+                name: RAZORPAY_CONFIG.company.name,
+                prefill: {
+                    email: user?.email || '',
+                    contact: user?.mobile || '',
+                    name: user?.name || '',
+                },
+                theme: RAZORPAY_CONFIG.theme,
+            };
+
+            setLoading(false);
+
+            RazorpayCheckout.open(razorpayOptions)
+                .then(async (data) => {
+                    // Step 3: Payment successful, verify with backend
+                    console.log('Payment successful:', data);
+                    setLoading(true);
+
+                    try {
+                        const verifyResponse = await verifyWalletPayment({
+                            razorpay_order_id: data.razorpay_order_id,
+                            razorpay_payment_id: data.razorpay_payment_id,
+                            razorpay_signature: data.razorpay_signature,
+                        });
+
+                        setLoading(false);
+
+                        if (verifyResponse.success) {
+                            Alert.alert(
+                                'Success',
+                                `₹${amount} has been added to your wallet successfully!`,
+                                [
+                                    {
+                                        text: 'OK',
+                                        onPress: () => navigation.goBack(),
+                                    },
+                                ]
+                            );
+                        } else {
+                            Alert.alert(
+                                'Verification Failed',
+                                verifyResponse.message || 'Payment verification failed. Please contact support.',
+                                [{ text: 'OK' }]
+                            );
+                        }
+                    } catch (verifyError) {
+                        setLoading(false);
+                        console.error('Verification error:', verifyError);
+                        Alert.alert(
+                            'Verification Error',
+                            'Payment completed but verification failed. Please contact support with your payment details.',
+                            [{ text: 'OK' }]
+                        );
+                    }
+                })
+                .catch((error) => {
+                    // Payment failed or cancelled
+                    console.log('Payment error:', error);
+                    setLoading(false);
+
+                    if (error.code === 0) {
+                        // Payment cancelled by user
+                        Alert.alert('Cancelled', 'Payment was cancelled', [{ text: 'OK' }]);
+                    } else {
+                        Alert.alert(
+                            'Payment Failed',
+                            error.description || 'Payment failed. Please try again.',
+                            [{ text: 'OK' }]
+                        );
+                    }
+                });
+        } catch (error) {
+            setLoading(false);
+            console.error('Error in handleAddCredits:', error);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to initiate payment. Please try again.',
+                [{ text: 'OK' }]
+            );
+        }
     };
 
     return (
@@ -122,10 +220,15 @@ const AddMoneyScreen = ({ navigation }) => {
                         <Text style={styles.bottomBarPayment}>Pay online</Text>
                     </View>
                     <TouchableOpacity
-                        style={styles.agreeButton}
+                        style={[styles.agreeButton, loading && styles.agreeButtonDisabled]}
                         onPress={handleAddCredits}
+                        disabled={loading}
                     >
-                        <Text style={styles.agreeButtonText}>Agree & pay</Text>
+                        {loading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                            <Text style={styles.agreeButtonText}>Agree & pay</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             )}
@@ -318,6 +421,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         borderRadius: 8,
         marginLeft: 16,
+        minWidth: 120,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    agreeButtonDisabled: {
+        backgroundColor: '#CCCCCC',
+        opacity: 0.6,
     },
     agreeButtonText: {
         color: '#fff',
