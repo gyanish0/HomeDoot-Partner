@@ -27,7 +27,7 @@ const CustomHeader = () => {
                     {/* Wallet Balance */}
                     <TouchableOpacity
                         style={styles.walletContainer}
-                        onPress={() => navigation.navigate('Money')}
+                        onPress={() => navigation.navigate('Wallet')}
                     >
                         <Text style={styles.walletAmount}>{walletBalance}</Text>
                         <Icon name="wallet" size={20} color="#B91C4F" style={styles.walletIcon} />
