@@ -25,6 +25,23 @@ export const verifyOTP = async (mobile, otp) => {
     }
 };
 
+/**
+ * Update FCM token for push notifications
+ * @param {string} fcmToken - Firebase Cloud Messaging token
+ * @returns {Promise} - API response
+ */
+export const updateFcmToken = async (fcmToken) => {
+    try {
+        const response = await axiosInstance.post('/update-token', {
+            fcm_token: fcmToken,
+        });
+        return response;
+    } catch (error) {
+        console.error('Update FCM Token Error:', error);
+        throw error;
+    }
+};
+
 export const getDashboard = async () => {
     try {
         const response = await axiosInstance.get('/dashboard');

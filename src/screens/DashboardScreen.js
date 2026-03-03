@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView, Animated, Modal, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { fetchDashboard } from '../store/slices/authSlice';
-import { getVendorOrderTodayDate } from '../services/vendorService';
+import { getVendorOrderTodayDate, acceptVendorOrder, getOrderFullDetails } from '../services/vendorService';
 import Colors from '../constants/Colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import messaging from '@react-native-firebase/messaging';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 
 const DashboardScreen = ({ navigation }) => {
     const dispatch = useDispatch();
@@ -14,6 +17,118 @@ const DashboardScreen = ({ navigation }) => {
     const [availabilityDates, setAvailabilityDates] = useState([]);
     const [todayOrders, setTodayOrders] = useState(null);
     const [pendingJobs, setPendingJobs] = useState([]);
+    const [bookingPopup, setBookingPopup] = useState(null);
+    const [bookingLoading, setBookingLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchToken = async () => {
+            const token = await AsyncStorage.getItem('@homedoot_auth_token');
+            console.log(token, 'tokentokentokentoken');
+        };
+        fetchToken();
+    }, []);
+
+    useEffect(() => {
+        const unsubscribe = messaging().onMessage(async remoteMessage => {
+            console.log('FCM Foreground Message:', remoteMessage);
+
+            const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'New Notification';
+            const body = remoteMessage.notification?.body || remoteMessage.data?.body || '';
+            const isBooking = remoteMessage?.data?.type === 'new_order';
+
+            await notifee.displayNotification({
+                title,
+                body,
+                data: remoteMessage.data || {},
+                android: {
+                    channelId: isBooking ? 'booking' : 'default',
+                    importance: AndroidImportance.HIGH,
+                    sound: 'ring',
+                    vibrationPattern: [300, 500],
+                    pressAction: { id: 'default' },
+                    smallIcon: 'ic_launcher',
+                    largeIcon: 'ic_launcher',
+                },
+                ios: {
+                    sound: 'ring.wav',
+                },
+            });
+
+            if (remoteMessage?.data?.type === 'new_order') {
+                showBookingPopup(remoteMessage.data);
+            }
+        });
+
+        return unsubscribe;
+    }, []);
+
+    const showBookingPopup = async (data) => {
+        // Show popup immediately with loading state
+        setBookingPopup(data);
+        setBookingLoading(true);
+
+        try {
+            const orderId = data?.order_id;
+            if (orderId) {
+                const response = await getOrderFullDetails(orderId);
+                console.log('Order full details:', response);
+                if (response?.data) {
+                    const { order, carts, vendors } = response.data;
+                    // Build service name from carts
+                    const serviceNames = carts?.map(cart => {
+                        const productName = cart.products?.service_name || '';
+                        const itemName = cart.items?.item_name || '';
+                        return itemName ? `${productName} (${itemName})` : productName;
+                    }).filter(Boolean).join(', ');
+
+                    setBookingPopup({
+                        ...data,
+                        order_no: order?.order_no,
+                        service_date: order?.service_date,
+                        service_time: order?.service_time,
+                        grand_total: order?.grand_total,
+                        sub_total: order?.sub_total,
+                        discount_total: order?.discount_total,
+                        address: order?.address,
+                        payment_method: order?.payment_method,
+                        order_status: order?.order_status,
+                        service_name: serviceNames || data?.service_name,
+                        carts: carts || [],
+                        vendors: vendors || [],
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching order full details:', error);
+            // Keep showing popup with FCM data if API fails
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
+    const handleAcceptBooking = async () => {
+        try {
+            setLoading(true);
+            const response = await acceptVendorOrder(bookingPopup?.order_no);
+            if (response) {
+                Alert.alert('Success', response?.message || 'Order accepted successfully');
+                setBookingPopup(null);
+                // Refresh dashboard to show new booking
+                loadDashboardData();
+            } else {
+                Alert.alert('Error', response?.message || 'Failed to accept order');
+            }
+        } catch (error) {
+            console.error('Error accepting order:', error);
+            Alert.alert('Error', 'Failed to accept order. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRejectBooking = () => {
+        setBookingPopup(null);
+    };
 
     // Animation for skeleton
     const shimmerAnimation = useRef(new Animated.Value(0)).current;
@@ -354,6 +469,110 @@ const DashboardScreen = ({ navigation }) => {
                     )}
                 </ScrollView>
             )}
+
+            {/* New Booking Popup Modal */}
+            <Modal
+                visible={!!bookingPopup}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setBookingPopup(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Icon name="bell-ring" size={28} color={Colors.primary} />
+                            <Text style={styles.modalTitle}>New Booking!</Text>
+                        </View>
+
+                        {bookingPopup && (
+                            <View style={styles.modalBody}>
+                                {bookingLoading ? (
+                                    <View style={styles.modalLoadingContainer}>
+                                        <ActivityIndicator size="large" color={Colors.primary} />
+                                        <Text style={styles.modalLoadingText}>Fetching order details...</Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        {bookingPopup.order_no && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Order No:</Text>
+                                                <Text style={styles.modalValue}>#{bookingPopup.order_no}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.service_name && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Service:</Text>
+                                                <Text style={[styles.modalValue, { flex: 1, textAlign: 'right' }]} numberOfLines={2}>{bookingPopup.service_name}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.carts?.length > 0 && bookingPopup.carts.map((cart, index) => (
+                                            <View key={index} style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Item {bookingPopup.carts.length > 1 ? index + 1 : ''}:</Text>
+                                                <Text style={styles.modalValue}>
+                                                    {cart.items?.item_name || cart.products?.service_name} × {cart.quantity} — ₹{cart.price}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                        {bookingPopup.service_date && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Date:</Text>
+                                                <Text style={styles.modalValue}>{bookingPopup.service_date}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.service_time && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Time:</Text>
+                                                <Text style={styles.modalValue}>{bookingPopup.service_time}:00</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.grand_total && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Total Amount:</Text>
+                                                <Text style={[styles.modalValue, { color: '#4CAF50', fontSize: 16 }]}>₹{bookingPopup.grand_total}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.discount_total > 0 && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Discount:</Text>
+                                                <Text style={[styles.modalValue, { color: '#F44336' }]}>-₹{bookingPopup.discount_total}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.payment_method && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Payment:</Text>
+                                                <Text style={styles.modalValue}>{bookingPopup.payment_method.replace(/_/g, ' ').toUpperCase()}</Text>
+                                            </View>
+                                        )}
+                                        {bookingPopup.address && (
+                                            <View style={styles.modalRow}>
+                                                <Text style={styles.modalLabel}>Address:</Text>
+                                                <Text style={[styles.modalValue, { flex: 1, textAlign: 'right' }]} numberOfLines={2}>{bookingPopup.address}</Text>
+                                            </View>
+                                        )}
+                                    </>
+                                )}
+                            </View>
+                        )}
+
+                        {!bookingLoading && (
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={styles.rejectButton}
+                                    onPress={handleRejectBooking}
+                                >
+                                    <Text style={styles.rejectButtonText}>REJECT</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.acceptButton}
+                                    onPress={handleAcceptBooking}
+                                >
+                                    <Text style={styles.acceptButtonText}>ACCEPT</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -596,6 +815,96 @@ const styles = StyleSheet.create({
         padding: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#e0e0e0',
+    },
+    // Booking Popup Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        width: '100%',
+        padding: 24,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 10,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#000',
+    },
+    modalBody: {
+        marginBottom: 24,
+    },
+    modalLoadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 30,
+    },
+    modalLoadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#666',
+    },
+    modalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    modalLabel: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    modalValue: {
+        fontSize: 14,
+        color: '#000',
+        fontWeight: '600',
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    rejectButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: '#F44336',
+        alignItems: 'center',
+    },
+    rejectButtonText: {
+        color: '#F44336',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    acceptButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 30,
+        backgroundColor: '#4CAF50',
+        alignItems: 'center',
+    },
+    acceptButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
     },
 });
 

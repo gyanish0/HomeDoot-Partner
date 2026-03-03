@@ -6,6 +6,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getUserData, saveUserData, clearStorage, getToken, saveToken } from '../../utils/storage';
 import * as authAPI from '../../services/authService';
+import messaging from '@react-native-firebase/messaging';
 
 // Async thunks
 export const loadUserData = createAsyncThunk(
@@ -50,6 +51,32 @@ export const verifyOTP = createAsyncThunk(
             }
             return rejectWithValue(response.message || 'Verification failed');
         } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    }
+);
+
+export const updateFcmToken = createAsyncThunk(
+    'auth/updateFcmToken',
+    async (_, { rejectWithValue }) => {
+        try {
+            const authStatus = await messaging().requestPermission();
+            const enabled =
+                authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+                authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+            if (enabled) {
+                const fcmToken = await messaging().getToken();
+                console.log('FCM Token:', fcmToken);
+                if (fcmToken) {
+                    const response = await authAPI.updateFcmToken(fcmToken);
+                    console.log('Update FCM Token response:', response);
+                    return response;
+                }
+            }
+            return rejectWithValue('Failed to get FCM token');
+        } catch (error) {
+            console.error('Update FCM Token Error:', error);
             return rejectWithValue(error.response?.data?.message || error.message);
         }
     }

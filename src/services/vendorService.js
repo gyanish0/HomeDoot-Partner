@@ -368,6 +368,16 @@ export const getVendorBusinessDetails = async () => {
     }
 };
 
+export const getOrderFullDetails = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(`order/${orderId}/full-details`);
+        return response;
+    } catch (error) {
+        console.error('Error fetching order full details:', error);
+        throw error;
+    }
+};
+
 export const acceptVendorOrder = async (orderNo) => {
     try {
         const response = await axiosInstance.post('orders/accept', {
@@ -651,6 +661,7 @@ export default {
     updateVendorBankDetails,
     getVendorBusinessDetails,
     updateVendorBusinessDetails,
+    getOrderFullDetails,
     acceptVendorOrder,
     sendJobStartOTP,
     resendJobStartOTP,

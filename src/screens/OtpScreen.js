@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useDispatch, useSelector } from 'react-redux';
-import { verifyOTP, sendOTP } from '../store/slices/authSlice';
+import { verifyOTP, sendOTP, updateFcmToken } from '../store/slices/authSlice';
 
 const otpValidationSchema = Yup.object().shape({
     otp: Yup.string()
@@ -39,6 +39,8 @@ const OtpScreen = ({ navigation, route }) => {
         onSubmit: async (values) => {
             try {
                 const result = await dispatch(verifyOTP({ mobile: mobileNumber, otp: values.otp })).unwrap();
+                // After successful OTP verification, update FCM token
+                dispatch(updateFcmToken());
             } catch (error) {
                 const errorMessage = typeof error === 'string' ? error : error?.message || 'Verification failed. Please try again.';
                 Alert.alert('Error', errorMessage);
