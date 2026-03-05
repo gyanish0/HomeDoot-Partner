@@ -31,7 +31,7 @@ import {
 } from '../services/vendorService';
 import { getVendorId } from '../utils/storage';
 
-const JobsScreen = () => {
+const JobsScreen = ({ navigation }) => {
     const [activeTab, setActiveTab] = useState('Upcoming');
     const [jobs, setJobs] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -458,7 +458,12 @@ const JobsScreen = () => {
     const groupedJobs = groupJobsByDate(jobs);
 
     const renderJobCard = (job) => (
-        <View key={job.id} style={styles.jobCard}>
+        <TouchableOpacity
+            key={job.id}
+            style={styles.jobCard}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('JobDetail', { jobId: job.id })}
+        >
             <View style={styles.jobHeader}>
                 <View style={styles.jobTimeSection}>
                     <Text style={styles.jobTime}>{job.time}</Text>
@@ -547,7 +552,7 @@ const JobsScreen = () => {
                     </TouchableOpacity>
                 </View>
             )}
-        </View>
+        </TouchableOpacity>
     );
 
     return (

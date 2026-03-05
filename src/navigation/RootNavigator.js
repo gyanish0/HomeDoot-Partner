@@ -22,6 +22,7 @@ import NotificationScreen from '../screens/NotificationScreen';
 import WalletScreen from '../screens/WalletScreen';
 import VendorProfileExample from '../screens/VendorProfileExample';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import JobDetailScreen from '../screens/JobDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -138,6 +139,11 @@ const RootNavigator = () => {
                         name="EditProfile"
                         component={EditProfileScreen}
                         options={{ headerShown: true, title: 'Edit Profile' }}
+                    />
+                    <Stack.Screen
+                        name="JobDetail"
+                        component={JobDetailScreen}
+                        options={{ headerShown: true, title: 'Job Details' }}
                     />
                 </>
             )}
