@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Ima
 import { mockReviewsData } from '../data/mockData';
 import Colors from '../constants/Colors';
 import { getVendorRatings } from '../services/vendorService';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 const RatingReviewScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
@@ -84,7 +85,7 @@ const RatingReviewScreen = () => {
 
             <Text style={styles.comment}>{item.comment}</Text>
 
-            <Text style={styles.date}>{item.date}</Text>
+            <Text style={styles.date}>{formatDisplayDate(item.date)}</Text>
         </View>
     );
 

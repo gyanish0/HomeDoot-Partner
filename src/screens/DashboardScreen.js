@@ -196,11 +196,8 @@ const DashboardScreen = ({ navigation }) => {
                     }
 
                     // Format date as "Day, Mon DD"
-                    const formattedDate = currentDate.toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                    });
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')} ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
                     dates.push({
                         id: i + 1,
@@ -401,14 +398,14 @@ const DashboardScreen = ({ navigation }) => {
                             contentContainerStyle={styles.availabilityScrollContent}
                         >
                             {availabilityDates.map((item, index) => (
-                                <View key={index} style={styles.dateCard}>
+                                <TouchableOpacity key={index} style={styles.dateCard} onPress={() => navigation.navigate('Calendar')}>
                                     <Text style={styles.dateText}>{item.date}</Text>
                                     <View style={styles.availableBadge}>
                                         <Text style={[styles.availableText, { color: item.available ? '#4CAF50' : '#F44336' }]}>
                                             • {item.available ? 'AVAILABLE' : 'UNAVAILABLE'}
                                         </Text>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))}
                         </ScrollView>
                     </View>

@@ -18,7 +18,7 @@ const JobHistoryScreen = () => {
                 id: 1,
                 customerName: 'Priyanka naik',
                 time: '02:00 PM',
-                date: '22 Jan',
+                date: '22 Jan 2026',
                 jobValue: 3630,
                 onlinePayment: 3630
             },
@@ -26,7 +26,7 @@ const JobHistoryScreen = () => {
                 id: 2,
                 customerName: 'Sheetal Mankoo',
                 time: '04:00 PM',
-                date: '19 Jan',
+                date: '19 Jan 2026',
                 jobValue: 2207,
                 onlinePayment: 2207
             },
@@ -34,7 +34,7 @@ const JobHistoryScreen = () => {
                 id: 3,
                 customerName: 'Shubhangi',
                 time: '04:30 PM',
-                date: '18 Jan',
+                date: '18 Jan 2026',
                 jobValue: 4155,
                 onlinePayment: 4155
             },
@@ -42,7 +42,7 @@ const JobHistoryScreen = () => {
                 id: 4,
                 customerName: 'sneha raut',
                 time: '03:00 PM',
-                date: '18 Jan',
+                date: '18 Jan 2026',
                 jobValue: 918,
                 onlinePayment: 918
             },
@@ -50,7 +50,7 @@ const JobHistoryScreen = () => {
                 id: 5,
                 customerName: 'Abida Kazi',
                 time: '04:30 PM',
-                date: '17 Jan',
+                date: '17 Jan 2026',
                 jobValue: 2546,
                 onlinePayment: 2546
             },
@@ -58,7 +58,7 @@ const JobHistoryScreen = () => {
                 id: 6,
                 customerName: 'SHIVANGI RAI',
                 time: '01:00 PM',
-                date: '17 Jan',
+                date: '17 Jan 2026',
                 jobValue: 1850,
                 onlinePayment: 1850
             }

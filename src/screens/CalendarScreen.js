@@ -5,6 +5,7 @@ import CalendarPicker from 'react-native-calendar-picker';
 import Colors from '../constants/Colors';
 import { updateVendorLeave } from '../services/vendorService';
 import { useAuth } from '../context/AuthContext';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 const CalendarScreen = () => {
     const { user } = useAuth();
@@ -30,7 +31,7 @@ const CalendarScreen = () => {
 
         if (activePicker === 'start') {
             setStartDate(jsDate);
-            setStartDateText(formatted);
+            setStartDateText(formatDisplayDate(jsDate));
             if (endDate && jsDate > endDate) {
                 setDateError('Start date cannot be after end date');
             } else {
@@ -38,7 +39,7 @@ const CalendarScreen = () => {
             }
         } else if (activePicker === 'end') {
             setEndDate(jsDate);
-            setEndDateText(formatted);
+            setEndDateText(formatDisplayDate(jsDate));
             if (startDate && startDate > jsDate) {
                 setDateError('End date cannot be before start date');
             } else {
@@ -73,7 +74,7 @@ const CalendarScreen = () => {
             if (response.success || response.message) {
                 Alert.alert(
                     'Success',
-                    `Leave period updated successfully from ${formatDate(startDate)} to ${formatDate(endDate)}`,
+                    `Leave period updated successfully from ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`,
                     [{
                         text: 'OK',
                         onPress: () => {
@@ -118,7 +119,7 @@ const CalendarScreen = () => {
                         >
                             <Icon name="calendar" size={18} color="#666" />
                             <Text style={styles.dateText}>
-                                {startDateText || 'YYYY-MM-DD'}
+                                {startDateText || 'DD MMM YYYY'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -131,7 +132,7 @@ const CalendarScreen = () => {
                         >
                             <Icon name="calendar" size={18} color="#666" />
                             <Text style={styles.dateText}>
-                                {endDateText || 'YYYY-MM-DD'}
+                                {endDateText || 'DD MMM YYYY'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -167,7 +168,7 @@ const CalendarScreen = () => {
                     ) : (
                         <>
                             <Icon name="content-save" size={20} color="#fff" />
-                            <Text style={styles.updateButtonText}>Update Availability</Text>
+                            <Text style={styles.updateButtonText}>Update Leave</Text>
                         </>
                     )}
                 </TouchableOpacity>
@@ -177,12 +178,12 @@ const CalendarScreen = () => {
                     <View style={styles.dateDisplayContainer}>
                         <View style={styles.dateDisplayBox}>
                             <Text style={styles.dateDisplayLabel}>FROM DATE</Text>
-                            <Text style={styles.dateDisplayValue}>{formatDate(startDate)}</Text>
+                            <Text style={styles.dateDisplayValue}>{formatDisplayDate(startDate)}</Text>
                         </View>
 
                         <View style={styles.dateDisplayBox}>
                             <Text style={styles.dateDisplayLabel}>TO DATE</Text>
-                            <Text style={styles.dateDisplayValue}>{formatDate(endDate)}</Text>
+                            <Text style={styles.dateDisplayValue}>{formatDisplayDate(endDate)}</Text>
                         </View>
                     </View>
                 )}

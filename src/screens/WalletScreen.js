@@ -31,11 +31,8 @@ const WalletScreen = () => {
                 const transformedTransactions = response.data.map(item => {
                     const isCredit = activeTab === 'credit';
                     const date = new Date(item.created_at);
-                    const formattedDate = date.toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                    });
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const formattedDate = `${String(date.getDate()).padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
 
                     return {
                         id: item.id,

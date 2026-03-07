@@ -393,11 +393,11 @@ const ManageHubScreen = ({ navigation }) => {
                                             <View style={styles.cardInfo}>
                                                 <Text style={styles.cardLabel}>Assigned At</Text>
                                                 <Text style={styles.cardValue}>
-                                                    {new Date(assignment.created_at).toLocaleDateString('en-US', {
-                                                        day: '2-digit',
-                                                        month: '2-digit',
-                                                        year: 'numeric',
-                                                    })}
+                                                    {(() => {
+                                                        const d = new Date(assignment.created_at);
+                                                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                        return `${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+                                                    })()}
                                                 </Text>
                                             </View>
                                         </View>

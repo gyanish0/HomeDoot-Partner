@@ -42,7 +42,7 @@ const BottomTabNavigator = () => {
                 name="Money"
                 component={MoneyScreen}
                 options={{
-                    tabBarLabel: 'Money',
+                    tabBarLabel: 'Earnings',
                     tabBarIcon: ({ color, size }) => (
                         <Icon name="wallet" size={size} color={color} />
                     ),

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import Colors from '../constants/Colors';
+import { formatDisplayDate } from '../utils/dateUtils';
 import {
     getVendorWalletCreditTransactions,
     getVendorWalletDebitTransactions,
@@ -156,7 +157,7 @@ const WalletTransactionScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.colOrderNo}>
                 <Text style={styles.orderLink}>{item.orderNo}</Text>
             </TouchableOpacity>
-            <Text style={[styles.tableRowText, styles.colCreatedAt]}>{item.createdAt}</Text>
+            <Text style={[styles.tableRowText, styles.colCreatedAt]}>{formatDisplayDate(item.createdAt)}</Text>
         </View>
     );
 

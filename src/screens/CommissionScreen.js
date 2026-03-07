@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator } f
 import { mockCommissionData } from '../data/mockData';
 import Colors from '../constants/Colors';
 import { getVendorCommissionCurrentMonth } from '../services/vendorService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CommissionScreen = () => {
+    const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [commissionData, setCommissionData] = useState(mockCommissionData.data);
     const [loading, setLoading] = useState(false);
@@ -104,10 +106,10 @@ const CommissionScreen = () => {
                         <Text style={styles.detailLabel}>Commission:</Text>
                         <Text style={styles.detailValue}>{commissionAmount.toFixed(2)}</Text>
                     </View>
-                    <View style={styles.detailRow}>
+                    {/* <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>GST on Commission (%):</Text>
                         <Text style={styles.detailValue}>{gstPercentage} ({gstPercentage}%)</Text>
-                    </View>
+                    </View> */}
                 </View>
             </View>
         );
@@ -151,7 +153,7 @@ const CommissionScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingBottom: insets.top }]}>
             <FlatList
                 data={commissionData?.transactions || []}
                 renderItem={renderCommissionItem}

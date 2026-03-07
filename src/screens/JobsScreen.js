@@ -16,6 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CalendarPicker from 'react-native-calendar-picker';
 import Colors from '../constants/Colors';
+import { formatDisplayDate } from '../utils/dateUtils';
 import {
     getVendorPendingOrders,
     getVendorAssignedOrders,
@@ -135,7 +136,7 @@ const JobsScreen = ({ navigation }) => {
                         location: location,
                         status: getStatusText(orderStatus),
                         statusColor: getStatusColor(orderStatus),
-                        date: order.service_date || order.created_at?.split('T')[0] || 'Today',
+                        date: formatDisplayDate(order.service_date || order.created_at?.split('T')[0]) || 'Today',
                         type: orderStatus,
                         phone: phone,
                         service: serviceName,
@@ -234,13 +235,13 @@ const JobsScreen = ({ navigation }) => {
                             const response = await acceptVendorOrder(job.orderNo);
                             if (response) {
                                 Alert.alert('Success', response?.message || 'Order accepted successfully');
-                                loadJobs(); // Refresh the list
+                                loadJobs();
                             } else {
                                 Alert.alert('Error', response?.message || 'Failed to accept order');
                             }
                         } catch (error) {
-                            console.error('Error accepting order:', error);
-                            Alert.alert('Error', 'Failed to accept order. Please try again.');
+                            console.error('Error accepting order:', error.message);
+                            Alert.alert('Error', error.message || 'Failed to accept order. Please try again.');
                         } finally {
                             setLoading(false);
                         }
@@ -721,7 +722,7 @@ const JobsScreen = ({ navigation }) => {
                                 >
                                     <Icon name="calendar" size={18} color="#666" />
                                     <Text style={[styles.dateText, !rescheduleDate && styles.placeholderText]}>
-                                        {rescheduleDate || 'YYYY-MM-DD'}
+                                        {rescheduleDate ? formatDisplayDate(rescheduleDate) : 'Select Date'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>

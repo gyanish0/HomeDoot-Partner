@@ -20,6 +20,8 @@ const JobDetailScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [orderDetails, setOrderDetails] = useState(null);
+    const [otherAddress, setOtherAddress] = useState(null);
+    const [userDetails, setUserDetails] = useState(null);
     const [carts, setCarts] = useState([]);
     const [vendors, setVendors] = useState([]);
 
@@ -31,9 +33,12 @@ const JobDetailScreen = ({ route, navigation }) => {
         try {
             setLoading(true);
             const response = await getOrderFullDetails(jobId);
+            console.log(response, 'responseresponseresponse')
             if (response?.data) {
-                const { order, carts: cartItems, vendors: vendorList } = response.data;
+                const { order, carts: cartItems, vendors: vendorList, other_address, user_details } = response.data;
                 setOrderDetails(order);
+                setOtherAddress(other_address || null);
+                setUserDetails(user_details || null);
                 setCarts(cartItems || []);
                 setVendors(vendorList || []);
             } else {
@@ -118,6 +123,12 @@ const JobDetailScreen = ({ route, navigation }) => {
     }
 
     const order = orderDetails;
+    const customerName = otherAddress?.other_first_name || userDetails?.name || 'N/A';
+    const customerPhone = otherAddress?.other_mobile_no || userDetails?.mobile || '';
+    const customerAddress = otherAddress?.other_address1 || userDetails?.address || '';
+    const customerHouseNo = otherAddress?.other_house_no || '';
+    const customerLocality = otherAddress?.other_locality || userDetails?.city || '';
+    const customerPincode = otherAddress?.other_postcode || order.pincode || userDetails?.pincode || '';
 
     return (
         <SafeAreaView style={styles.container}>
@@ -161,20 +172,16 @@ const JobDetailScreen = ({ route, navigation }) => {
                     <View style={styles.detailRow}>
                         <Icon name="account" size={18} color="#666" />
                         <Text style={styles.detailLabel}>Name:</Text>
-                        <Text style={styles.detailValue}>
-                            {order.name || order.other_first_name || order.user_name || order.final_address?.first_name || 'N/A'}
-                        </Text>
+                        <Text style={styles.detailValue}>{customerName}</Text>
                     </View>
-                    {(order.other_mobile_no || order.user_mobile || order.final_address?.phone) ? (
+                    {customerPhone ? (
                         <TouchableOpacity
                             style={styles.detailRow}
-                            onPress={() => handleCall(order.other_mobile_no || order.user_mobile || order.final_address?.phone)}
+                            onPress={() => handleCall(customerPhone)}
                         >
                             <Icon name="phone" size={18} color={Colors.primary} />
                             <Text style={styles.detailLabel}>Phone:</Text>
-                            <Text style={[styles.detailValue, styles.linkText]}>
-                                {order.other_mobile_no || order.user_mobile || order.final_address?.phone}
-                            </Text>
+                            <Text style={[styles.detailValue, styles.linkText]}>{customerPhone}</Text>
                         </TouchableOpacity>
                     ) : null}
                 </View>
@@ -184,22 +191,22 @@ const JobDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.sectionTitle}>Address</Text>
                     <TouchableOpacity
                         style={styles.addressContainer}
-                        onPress={() => handleNavigation(order.address || order.other_address1 || order.final_address?.address1)}
+                        onPress={() => handleNavigation(customerAddress)}
                     >
                         <Icon name="map-marker" size={20} color={Colors.primary} />
                         <View style={styles.addressTextContainer}>
                             <Text style={styles.addressText}>
-                                {order.address || order.other_address1 || order.final_address?.address1 || 'N/A'}
+                                {customerAddress || 'N/A'}
                             </Text>
-                            {(order.other_house_no || order.other_locality) ? (
+                            {(customerHouseNo || customerLocality) ? (
                                 <Text style={styles.addressSubText}>
-                                    {order.other_house_no ? `${order.other_house_no}, ` : ''}
-                                    {order.other_locality || ''}
+                                    {customerHouseNo ? `${customerHouseNo}, ` : ''}
+                                    {customerLocality}
                                 </Text>
                             ) : null}
-                            {(order.pincode || order.other_postcode) ? (
+                            {customerPincode ? (
                                 <Text style={styles.addressSubText}>
-                                    Pincode: {order.pincode || order.other_postcode}
+                                    Pincode: {customerPincode}
                                 </Text>
                             ) : null}
                         </View>

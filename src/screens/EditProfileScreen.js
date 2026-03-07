@@ -32,6 +32,7 @@ import {
     selectVendorLoading,
 } from '../store/slices/vendorSlice';
 import { updateVendorProfile } from '../services/vendorService';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 const profileValidationSchema = Yup.object().shape({
     fullName: Yup.string().required('Full name is required'),
@@ -79,13 +80,13 @@ const EditProfileScreen = ({ navigation }) => {
             if (vendor.non_availability_from) {
                 const parsed = new Date(vendor.non_availability_from);
                 setStartDate(parsed);
-                setStartDateText(formatDate(parsed));
+                setStartDateText(formatDisplayDate(parsed));
             }
 
             if (vendor.non_availability_to) {
                 const parsed = new Date(vendor.non_availability_to);
                 setEndDate(parsed);
-                setEndDateText(formatDate(parsed));
+                setEndDateText(formatDisplayDate(parsed));
             }
 
             // Fetch cities if state is already selected
@@ -221,7 +222,7 @@ const EditProfileScreen = ({ navigation }) => {
 
         if (activePicker === 'start') {
             setStartDate(jsDate);
-            setStartDateText(formatted);
+            setStartDateText(formatDisplayDate(jsDate));
             if (endDate && jsDate > endDate) {
                 setDateError('Start date cannot be after end date');
             } else {
@@ -229,7 +230,7 @@ const EditProfileScreen = ({ navigation }) => {
             }
         } else if (activePicker === 'end') {
             setEndDate(jsDate);
-            setEndDateText(formatted);
+            setEndDateText(formatDisplayDate(jsDate));
             if (startDate && startDate > jsDate) {
                 setDateError('End date cannot be before start date');
             } else {
@@ -344,7 +345,7 @@ const EditProfileScreen = ({ navigation }) => {
                         >
                             <Icon name="calendar" size={18} color="#666" />
                             <Text style={styles.dateText}>
-                                {startDateText || 'YYYY-MM-DD'}
+                                {startDateText || 'DD MMM YYYY'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -357,7 +358,7 @@ const EditProfileScreen = ({ navigation }) => {
                         >
                             <Icon name="calendar" size={18} color="#666" />
                             <Text style={styles.dateText}>
-                                {endDateText || 'YYYY-MM-DD'}
+                                {endDateText || 'DD MMM YYYY'}
                             </Text>
                         </TouchableOpacity>
                     </View>
