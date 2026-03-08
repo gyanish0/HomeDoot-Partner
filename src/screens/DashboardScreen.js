@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, A
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useDispatch } from 'react-redux';
 import { fetchDashboard } from '../store/slices/authSlice';
-import { getVendorOrderTodayDate, acceptVendorOrder, getOrderFullDetails } from '../services/vendorService';
+import { getVendorOrderTodayDate, acceptVendorOrder, getOrderFullDetails, getVendorTodayPendingOrders } from '../services/vendorService';
 import Colors from '../constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
@@ -175,6 +175,46 @@ const DashboardScreen = ({ navigation }) => {
                 console.error('Error loading today orders:', todayOrdersError);
             }
 
+            // Fetch today's pending orders for new jobs
+            try {
+                const pendingOrdersResponse = await getVendorTodayPendingOrders();
+                console.log('Pending orders response:', pendingOrdersResponse.data);
+                if (pendingOrdersResponse?.status && pendingOrdersResponse?.data?.data) {
+                    const statusColors = {
+                        'completed': '#4CAF50',
+                        'assigned': '#FF9800',
+                        'cancelled': '#F44336',
+                        'pending': '#2196F3'
+                    };
+
+                    const pending = pendingOrdersResponse.data.data.map((order) => {
+                        // Format service time
+                        let timeDisplay = 'Today';
+                        if (order.service_time) {
+                            const hour = parseInt(order.service_time);
+                            if (hour >= 0 && hour < 24) {
+                                timeDisplay = `${hour}:00`;
+                            }
+                        }
+
+                        // Get customer name from the customers object if available
+                        const customerName = order.customers?.name || `Order #${order.order_no}`;
+
+                        return {
+                            id: order.id,
+                            time: timeDisplay,
+                            customerName: customerName,
+                            status: order.order_status?.toUpperCase() || 'PENDING',
+                            statusColor: statusColors[order.order_status?.toLowerCase()] || '#2196F3'
+                        };
+                    });
+                    console.log(pending, 'pendingJobspendingJobs')
+                    setPendingJobs(pending);
+                }
+            } catch (pendingOrdersError) {
+                console.error('Error loading pending orders:', pendingOrdersError);
+            }
+
             // Generate availability dates based on vendor details
             if (result?.VendorDetails) {
                 const vendorDetails = result.VendorDetails;
@@ -219,7 +259,7 @@ const DashboardScreen = ({ navigation }) => {
                     'pending': '#2196F3'
                 };
 
-                // Process assigned orders (for "more jobs today" section)
+                // Process assigned orders (for "jobs assigned today" section)
                 if (data.assignedOrders && Array.isArray(data.assignedOrders)) {
                     const assignedJobs = data.assignedOrders.map((order) => {
                         // Format service time
@@ -242,33 +282,7 @@ const DashboardScreen = ({ navigation }) => {
                     setTodayJobs(assignedJobs);
                 }
 
-                // Process pending orders (for "no new jobs" section)
-                if (data.pendingOrders && Array.isArray(data.pendingOrders)) {
-                    const pending = data.pendingOrders.map((order) => {
-                        // Format service time
-                        let timeDisplay = 'Today';
-                        if (order.service_time) {
-                            const hour = parseInt(order.service_time);
-                            if (hour >= 0 && hour < 24) {
-                                timeDisplay = `${hour}:00`;
-                            }
-                        }
-
-                        // Get customer name from the customers object if available
-                        const customerName = order.customers?.name || `Order #${order.order_no}`;
-
-                        return {
-                            id: order.id,
-                            time: timeDisplay,
-                            customerName: customerName,
-                            status: order.order_status?.toUpperCase() || 'PENDING',
-                            statusColor: statusColors[order.order_status?.toLowerCase()] || '#2196F3'
-                        };
-                    });
-                    setPendingJobs(pending);
-                }
             } else if (result?.Dashboard) {
-                // Fallback to dashboard data if today orders API doesn't return data
                 const jobs = result.Dashboard.map((item, index) => {
                     const statusColors = {
                         'completed': '#4CAF50',
@@ -415,7 +429,7 @@ const DashboardScreen = ({ navigation }) => {
                         <View style={styles.jobsSection}>
                             <TouchableOpacity
                                 style={styles.sectionHeader}
-                                onPress={() => navigation.navigate('Ongoing')}
+                                onPress={() => navigation.navigate('Ongoing', { selectedTab: 'pending' })}
                             >
                                 <Text style={styles.sectionTitle}>{pendingJobs.length} pending job{pendingJobs.length !== 1 ? 's' : ''}</Text>
                                 <Icon name="chevron-right" size={24} color="#666" />
@@ -445,7 +459,7 @@ const DashboardScreen = ({ navigation }) => {
                         <View style={styles.jobsSection}>
                             <TouchableOpacity
                                 style={styles.sectionHeader}
-                                onPress={() => navigation.navigate('Ongoing')}
+                                onPress={() => navigation.navigate('Ongoing', { selectedTab: 'upcoming' })}
                             >
                                 <Text style={styles.sectionTitle}>{todayJobs.length} job{todayJobs.length !== 1 ? 's' : ''} assigned today</Text>
                                 <Icon name="chevron-right" size={24} color="#666" />

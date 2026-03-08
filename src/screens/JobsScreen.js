@@ -13,6 +13,7 @@ import {
     Modal,
     TextInput,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import CalendarPicker from 'react-native-calendar-picker';
 import Colors from '../constants/Colors';
@@ -32,7 +33,7 @@ import {
 } from '../services/vendorService';
 import { getVendorId } from '../utils/storage';
 
-const JobsScreen = ({ navigation }) => {
+const JobsScreen = ({ navigation, route }) => {
     const [activeTab, setActiveTab] = useState('Upcoming');
     const [jobs, setJobs] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -65,6 +66,16 @@ const JobsScreen = ({ navigation }) => {
         { label: '6 PM', value: 18 },
         { label: '7 PM', value: 19 },
     ];
+
+    // Set active tab from navigation params every time screen comes into focus
+    useFocusEffect(
+        React.useCallback(() => {
+            if (route.params?.selectedTab) {
+                const tabName = route.params.selectedTab.charAt(0).toUpperCase() + route.params.selectedTab.slice(1);
+                setActiveTab(tabName);
+            }
+        }, [route.params?.selectedTab])
+    );
 
     // Load jobs from API
     useEffect(() => {

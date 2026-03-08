@@ -269,6 +269,15 @@ export const getVendorOrderTodayDate = async () => {
     }
 };
 
+export const getVendorTodayPendingOrders = async () => {
+    try {
+        const response = await axiosInstance.get('/today-pending-orders');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const getVendorCommissionCurrentMonth = async () => {
     try {
         const response = await axiosInstance.get('invoice/commission');
