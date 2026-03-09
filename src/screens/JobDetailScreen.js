@@ -167,52 +167,56 @@ const JobDetailScreen = ({ route, navigation }) => {
                 </View>
 
                 {/* Customer Details */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Customer Details</Text>
-                    <View style={styles.detailRow}>
-                        <Icon name="account" size={18} color="#666" />
-                        <Text style={styles.detailLabel}>Name:</Text>
-                        <Text style={styles.detailValue}>{customerName}</Text>
+                {order.order_status?.toLowerCase() !== 'completed' && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Customer Details</Text>
+                        <View style={styles.detailRow}>
+                            <Icon name="account" size={18} color="#666" />
+                            <Text style={styles.detailLabel}>Name:</Text>
+                            <Text style={styles.detailValue}>{customerName}</Text>
+                        </View>
+                        {customerPhone ? (
+                            <TouchableOpacity
+                                style={styles.detailRow}
+                                onPress={() => handleCall(customerPhone)}
+                            >
+                                <Icon name="phone" size={18} color={Colors.primary} />
+                                <Text style={styles.detailLabel}>Phone:</Text>
+                                <Text style={[styles.detailValue, styles.linkText]}>{customerPhone}</Text>
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
-                    {customerPhone ? (
-                        <TouchableOpacity
-                            style={styles.detailRow}
-                            onPress={() => handleCall(customerPhone)}
-                        >
-                            <Icon name="phone" size={18} color={Colors.primary} />
-                            <Text style={styles.detailLabel}>Phone:</Text>
-                            <Text style={[styles.detailValue, styles.linkText]}>{customerPhone}</Text>
-                        </TouchableOpacity>
-                    ) : null}
-                </View>
+                )}
 
                 {/* Address */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Address</Text>
-                    <TouchableOpacity
-                        style={styles.addressContainer}
-                        onPress={() => handleNavigation(customerAddress)}
-                    >
-                        <Icon name="map-marker" size={20} color={Colors.primary} />
-                        <View style={styles.addressTextContainer}>
-                            <Text style={styles.addressText}>
-                                {customerAddress || 'N/A'}
-                            </Text>
-                            {(customerHouseNo || customerLocality) ? (
-                                <Text style={styles.addressSubText}>
-                                    {customerHouseNo ? `${customerHouseNo}, ` : ''}
-                                    {customerLocality}
+                {order.order_status?.toLowerCase() !== 'completed' && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Address</Text>
+                        <TouchableOpacity
+                            style={styles.addressContainer}
+                            onPress={() => handleNavigation(customerAddress)}
+                        >
+                            <Icon name="map-marker" size={20} color={Colors.primary} />
+                            <View style={styles.addressTextContainer}>
+                                <Text style={styles.addressText}>
+                                    {customerAddress || 'N/A'}
                                 </Text>
-                            ) : null}
-                            {customerPincode ? (
-                                <Text style={styles.addressSubText}>
-                                    Pincode: {customerPincode}
-                                </Text>
-                            ) : null}
-                        </View>
-                        <Icon name="navigation-variant-outline" size={20} color="#666" />
-                    </TouchableOpacity>
-                </View>
+                                {(customerHouseNo || customerLocality) ? (
+                                    <Text style={styles.addressSubText}>
+                                        {customerHouseNo ? `${customerHouseNo}, ` : ''}
+                                        {customerLocality}
+                                    </Text>
+                                ) : null}
+                                {customerPincode ? (
+                                    <Text style={styles.addressSubText}>
+                                        Pincode: {customerPincode}
+                                    </Text>
+                                ) : null}
+                            </View>
+                            <Icon name="navigation-variant-outline" size={20} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Items / Services */}
                 {carts.length > 0 && (

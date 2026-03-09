@@ -491,29 +491,35 @@ const JobsScreen = ({ navigation, route }) => {
                         <Text style={styles.serviceText}>{job.service}</Text>
                     )}
                 </View>
-                <View style={styles.jobActions}>
-                    {job.phone && (
+                {activeTab !== 'Completed' && (
+                    <View style={styles.jobActions}>
+                        {job.phone && (
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => handleCall(job.phone)}
+                            >
+                                <Icon name="phone-outline" size={24} color="#666" />
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             style={styles.actionButton}
-                            onPress={() => handleCall(job.phone)}
+                            onPress={() => handleNavigation(job.location)}
                         >
-                            <Icon name="phone-outline" size={24} color="#666" />
+                            <Icon name="navigation-variant-outline" size={24} color="#666" />
                         </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleNavigation(job.location)}
-                    >
-                        <Icon name="navigation-variant-outline" size={24} color="#666" />
-                    </TouchableOpacity>
-                </View>
+                    </View>
+                )}
             </View>
-            <Text style={styles.customerName}>{job.customerName}</Text>
-            <Text style={styles.locationText} numberOfLines={2}>{job.location}</Text>
-            {(job.houseNo || job.locality) && (
-                <Text style={styles.addressDetails}>
-                    {job.houseNo ? `${job.houseNo}, ` : ''}{job.locality || ''}
-                </Text>
+            {activeTab !== 'Completed' && (
+                <>
+                    <Text style={styles.customerName}>{job.customerName}</Text>
+                    <Text style={styles.locationText} numberOfLines={2}>{job.location}</Text>
+                    {(job.houseNo || job.locality) && (
+                        <Text style={styles.addressDetails}>
+                            {job.houseNo ? `${job.houseNo}, ` : ''}{job.locality || ''}
+                        </Text>
+                    )}
+                </>
             )}
             <View style={styles.jobFooter}>
                 <Text style={[styles.jobStatus, { color: job.statusColor }]}>
