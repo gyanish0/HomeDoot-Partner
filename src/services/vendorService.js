@@ -1,4 +1,5 @@
 import axiosInstance from './axiosInstance';
+import { BASE_URL } from '../config/api';
 
 export const getStates = async () => {
     try {
@@ -11,7 +12,7 @@ export const getStates = async () => {
 
 export const getCities = async (stateId) => {
     try {
-        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/cities/${stateId}`);
+        const response = await axiosInstance.get(`${BASE_URL}/api/cities/${stateId}`);
         return response.data;
     } catch (error) {
         throw error;
@@ -29,7 +30,7 @@ export const getCategories = async () => {
 
 export const getSubcategories = async (categoryId) => {
     try {
-        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/ajax-subcategory?cat_id=${categoryId}`);
+        const response = await axiosInstance.get(`${BASE_URL}/ajax-subcategory?cat_id=${categoryId}`);
         return response;
     } catch (error) {
         throw error;
@@ -244,7 +245,7 @@ export const getVendorRatings = async (page = 1, perPage = 20) => {
 
 export const getVendorWalletCreditTransactions = async (page = 1, perPage = 20) => {
     try {
-        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/vendor-wallet-transaction/credit?page=${page}&per_page=${perPage}`);
+        const response = await axiosInstance.get(`${BASE_URL}/api/vendor-wallet-transaction/credit?page=${page}&per_page=${perPage}`);
         return response;
     } catch (error) {
         throw error;
@@ -253,7 +254,7 @@ export const getVendorWalletCreditTransactions = async (page = 1, perPage = 20) 
 
 export const getVendorWalletDebitTransactions = async (page = 1, perPage = 20) => {
     try {
-        const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/vendor-wallet-transaction/debit?page=${page}&per_page=${perPage}`);
+        const response = await axiosInstance.get(`${BASE_URL}/api/vendor-wallet-transaction/debit?page=${page}&per_page=${perPage}`);
         return response;
     } catch (error) {
         throw error;
@@ -262,7 +263,7 @@ export const getVendorWalletDebitTransactions = async (page = 1, perPage = 20) =
 
 export const getVendorOrderTodayDate = async () => {
     try {
-        const response = await axiosInstance.get('https://doot.globleitsolutions.com/api/vendor-order-today-date/');
+        const response = await axiosInstance.get(`${BASE_URL}/api/vendor-order-today-date/`);
         return response;
     } catch (error) {
         throw error;

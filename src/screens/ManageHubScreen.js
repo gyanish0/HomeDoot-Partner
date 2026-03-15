@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axiosInstance from '../services/axiosInstance';
+import { BASE_URL } from '../config/api';
 
 const ManageHubScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
@@ -55,7 +56,7 @@ const ManageHubScreen = ({ navigation }) => {
 
     const fetchAreas = async (stateId) => {
         try {
-            const response = await axiosInstance.get(`https://doot.globleitsolutions.com/api/vendor/states/${stateId}/areas`);
+            const response = await axiosInstance.get(`${BASE_URL}/api/vendor/states/${stateId}/areas`);
             console.log('Areas response:', response.data);
             if (response.data) {
                 setAreas(Array.isArray(response.data) ? response.data : []);

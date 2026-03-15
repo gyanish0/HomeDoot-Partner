@@ -122,7 +122,7 @@ const OtpScreen = ({ navigation, route }) => {
                                 We've sent a 4-digit code to
                             </Text>
                             <Text style={styles.mobileNumber}>+91 {mobileNumber}</Text>
-                            <Text style={styles.mobileNumber}>{otpMessage}</Text>
+                            {/* <Text style={styles.mobileNumber}>{otpMessage}</Text> */}
                         </View>
 
                         {/* OTP Input Boxes */}

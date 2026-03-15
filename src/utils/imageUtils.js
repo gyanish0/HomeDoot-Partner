@@ -3,7 +3,8 @@
  * Handles image URL transformations and formatting
  */
 
-const BASE_URL = 'https://doot.globleitsolutions.com';
+import { BASE_URL } from '../config/api';
+
 const STORAGE_PATH = '/storage/app/public/images/profile/';
 
 export const getProfileImageUrl = (vendor) => {
