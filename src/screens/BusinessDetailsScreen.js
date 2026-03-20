@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getVendorBusinessDetails, updateVendorBusinessDetails } from '../services/vendorService';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -16,6 +17,7 @@ const businessValidationSchema = Yup.object().shape({
 });
 
 const BusinessDetailsScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [fetchingData, setFetchingData] = useState(true);
     const [existingBusinessDetails, setExistingBusinessDetails] = useState(null);
@@ -168,7 +170,10 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Show existing details status */}
                 {existingBusinessDetails && (
                     <View style={styles.infoBox}>
@@ -397,7 +402,7 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
                 {/* Submit Button */}
                 <TouchableOpacity
-                    style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                    style={[styles.submitButton, { marginBottom: insets.bottom + 8 }, loading && styles.submitButtonDisabled]}
                     onPress={formik.handleSubmit}
                     disabled={loading}
                 >

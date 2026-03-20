@@ -10,11 +10,13 @@ import {
     Alert,
     Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axiosInstance from '../services/axiosInstance';
 import { BASE_URL } from '../config/api';
 
 const ManageHubScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [states, setStates] = useState([]);
@@ -151,7 +153,11 @@ const ManageHubScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={{ paddingBottom: insets.bottom }}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Assign Areas Section */}
                 <View style={styles.assignSection}>
                     {/* State Selection */}

@@ -7,6 +7,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getUserData, saveUserData, clearStorage, getToken, saveToken } from '../../utils/storage';
 import * as authAPI from '../../services/authService';
 import messaging from '@react-native-firebase/messaging';
+import { getApps } from '@react-native-firebase/app';
 
 // Async thunks
 export const loadUserData = createAsyncThunk(
@@ -30,7 +31,6 @@ export const sendOTP = createAsyncThunk(
     async (mobile, { rejectWithValue }) => {
         try {
             const response = await authAPI.sendOTP(mobile);
-            console.log(response, 'response')
             return response;
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || error.message);
@@ -43,7 +43,6 @@ export const verifyOTP = createAsyncThunk(
     async ({ mobile, otp }, { rejectWithValue }) => {
         try {
             const response = await authAPI.verifyOTP(mobile, otp);
-            console.log(response, 'verifyOTP response');
             if (response.status && response.token) {
                 await saveToken(response.token);
                 await saveUserData(response.vendor);
@@ -60,6 +59,10 @@ export const updateFcmToken = createAsyncThunk(
     'auth/updateFcmToken',
     async (_, { rejectWithValue }) => {
         try {
+            if (getApps().length === 0) {
+                return rejectWithValue('Firebase app is not initialized');
+            }
+
             const authStatus = await messaging().requestPermission();
             const enabled =
                 authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -67,10 +70,8 @@ export const updateFcmToken = createAsyncThunk(
 
             if (enabled) {
                 const fcmToken = await messaging().getToken();
-                console.log('FCM Token:', fcmToken);
                 if (fcmToken) {
                     const response = await authAPI.updateFcmToken(fcmToken);
-                    console.log('Update FCM Token response:', response);
                     return response;
                 }
             }

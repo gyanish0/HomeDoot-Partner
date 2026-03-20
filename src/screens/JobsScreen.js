@@ -106,7 +106,6 @@ const JobsScreen = ({ navigation, route }) => {
                     response = await getVendorPendingOrders(currentPage, perPage);
             }
             if (response?.status && response?.data) {
-                console.log(response.data, 'jobjobjobjobjob======111')
                 const transformedJobs = response.data.data.map(order => {
                     // Format time from service_time (24-hour format)
                     const serviceHour = parseInt(order.service_time);

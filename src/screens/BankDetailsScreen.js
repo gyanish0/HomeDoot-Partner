@@ -74,8 +74,6 @@ const BankDetailsScreen = ({ navigation }) => {
                 setFetchingData(true);
                 const response = await getVendorBankDetails();
 
-                console.log('Bank details response:', response);
-
                 if (response.success && response.data) {
                     const bankData = response.data.bank;
 
@@ -245,9 +243,6 @@ const BankDetailsScreen = ({ navigation }) => {
                             {cancelledCheque ? '✓ New Image Selected' : 'Upload Cheque Image'}
                         </Text>
                     </TouchableOpacity>
-                    {
-                        console.log(getDocumentUrl(existingBankDetails.cheque_file), 'getDocumentUrl(existingBankDetails.cheque_file)')
-                    }
                     {cancelledCheque ? (
                         <Text style={styles.fileName}>{cancelledCheque.name}</Text>
                     ) : existingBankDetails?.cheque_file ? (

@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, SafeAreaVie
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createWalletOrder, verifyWalletPayment } from '../services/vendorService';
 import RAZORPAY_CONFIG from '../config/razorpay';
 
 const AddMoneyScreen = ({ navigation }) => {
     const user = useSelector((state) => state.auth.user);
+    const insets = useSafeAreaInsets();
     const [credits, setCredits] = useState('');
     const [selectedPayment, setSelectedPayment] = useState('online');
     const [loading, setLoading] = useState(false);
@@ -69,7 +71,6 @@ const AddMoneyScreen = ({ navigation }) => {
             RazorpayCheckout.open(razorpayOptions)
                 .then(async (data) => {
                     // Step 3: Payment successful, verify with backend
-                    console.log('Payment successful:', data);
                     setLoading(true);
 
                     try {
@@ -208,13 +209,13 @@ const AddMoneyScreen = ({ navigation }) => {
 
                 {/* Spacer for bottom bar */}
                 {credits && parseFloat(credits) > 0 && (
-                    <View style={styles.bottomSpacer} />
+                    <View style={[styles.bottomSpacer, { height: 100 + insets.bottom }]} />
                 )}
             </ScrollView>
 
             {/* Bottom Fixed Bar */}
             {credits && parseFloat(credits) > 0 && (
-                <View style={styles.bottomBar}>
+                <View style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }]}>
                     <View style={styles.bottomBarLeft}>
                         <Text style={styles.bottomBarAmount}>₹{calculateAmount()}</Text>
                         <Text style={styles.bottomBarPayment}>Pay online</Text>

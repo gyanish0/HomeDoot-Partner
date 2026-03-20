@@ -7,11 +7,13 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axiosInstance from '../services/axiosInstance';
 
 
 const MyHubScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const [selectedHub, setSelectedHub] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -32,7 +34,6 @@ const MyHubScreen = ({ navigation }) => {
             setLoading(true);
             setError(null);
             const response = await axiosInstance.get('/service-area');
-            console.log(response.data.assignments, 'response')
             if (response.data) {
                 const { assignments } = response.data;
 
@@ -61,7 +62,6 @@ const MyHubScreen = ({ navigation }) => {
 
     const handleHelpItem = (item) => {
         // Handle navigation to help details
-        console.log('Help item pressed:', item);
     };
 
     return (
@@ -85,7 +85,11 @@ const MyHubScreen = ({ navigation }) => {
                     <Text style={styles.emptyText}>No service areas assigned</Text>
                 </View>
             ) : (
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={{ paddingBottom: insets.bottom }}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Hub Areas Tabs */}
                     <ScrollView
                         horizontal

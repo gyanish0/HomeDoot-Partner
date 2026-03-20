@@ -70,7 +70,6 @@ const CalendarScreen = () => {
             };
 
             const response = await updateVendorLeave(leaveData);
-            console.log(response, '=====response====11=response')
             if (response.success || response.message) {
                 Alert.alert(
                     'Success',

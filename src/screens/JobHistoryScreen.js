@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
 
 const JobHistoryScreen = () => {
+    const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [jobHistory, setJobHistory] = useState([]);
 
@@ -100,7 +102,7 @@ const JobHistoryScreen = () => {
         <SafeAreaView style={styles.container}>
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}

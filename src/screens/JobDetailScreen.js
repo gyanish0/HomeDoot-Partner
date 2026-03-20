@@ -11,11 +11,13 @@ import {
     Linking,
     RefreshControl,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
 import { getOrderFullDetails } from '../services/vendorService';
 
 const JobDetailScreen = ({ route, navigation }) => {
+    const insets = useSafeAreaInsets();
     const { jobId } = route.params;
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +35,6 @@ const JobDetailScreen = ({ route, navigation }) => {
         try {
             setLoading(true);
             const response = await getOrderFullDetails(jobId);
-            console.log(response, 'responseresponseresponse')
             if (response?.data) {
                 const { order, carts: cartItems, vendors: vendorList, other_address, user_details } = response.data;
                 setOrderDetails(order);
@@ -134,7 +135,7 @@ const JobDetailScreen = ({ route, navigation }) => {
         <SafeAreaView style={styles.container}>
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
                 }

@@ -7,6 +7,7 @@ import { getVendorOrderTodayDate, acceptVendorOrder, getOrderFullDetails, getVen
 import Colors from '../constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
+import { getApps } from '@react-native-firebase/app';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 
 const DashboardScreen = ({ navigation }) => {
@@ -23,14 +24,17 @@ const DashboardScreen = ({ navigation }) => {
     useEffect(() => {
         const fetchToken = async () => {
             const token = await AsyncStorage.getItem('@homedoot_auth_token');
-            console.log(token, 'tokentokentokentoken');
         };
         fetchToken();
     }, []);
 
     useEffect(() => {
+        if (getApps().length === 0) {
+            console.warn('Firebase app is not initialized. Skipping dashboard FCM listener.');
+            return;
+        }
+
         const unsubscribe = messaging().onMessage(async remoteMessage => {
-            console.log('FCM Foreground Message:', remoteMessage);
 
             const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'New Notification';
             const body = remoteMessage.notification?.body || remoteMessage.data?.body || '';
@@ -71,7 +75,6 @@ const DashboardScreen = ({ navigation }) => {
             const orderId = data?.order_id;
             if (orderId) {
                 const response = await getOrderFullDetails(orderId);
-                console.log('Order full details:', response);
                 if (response?.data) {
                     const { order, carts, vendors } = response.data;
                     // Build service name from carts
@@ -167,7 +170,6 @@ const DashboardScreen = ({ navigation }) => {
             let todayOrdersResponse = null;
             try {
                 todayOrdersResponse = await getVendorOrderTodayDate();
-                console.log('Today orders response:', todayOrdersResponse);
                 if (todayOrdersResponse?.status && todayOrdersResponse?.data) {
                     setTodayOrders(todayOrdersResponse.data);
                 }
@@ -178,7 +180,6 @@ const DashboardScreen = ({ navigation }) => {
             // Fetch today's pending orders for new jobs
             try {
                 const pendingOrdersResponse = await getVendorTodayPendingOrders();
-                console.log('Pending orders response:', pendingOrdersResponse.data);
                 if (pendingOrdersResponse?.status && pendingOrdersResponse?.data?.data) {
                     const statusColors = {
                         'completed': '#4CAF50',

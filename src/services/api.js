@@ -26,7 +26,6 @@ const apiRequest = async (endpoint, options = {}) => {
     };
 
     try {
-        console.log('API Request:', url, defaultOptions);
         const response = await fetch(url, defaultOptions);
 
         // Check if response is JSON
@@ -38,7 +37,6 @@ const apiRequest = async (endpoint, options = {}) => {
         }
 
         const data = await response.json();
-        console.log('API Response:', data);
 
         if (!response.ok) {
             throw new Error(data.message || `API Error: ${response.status}`);

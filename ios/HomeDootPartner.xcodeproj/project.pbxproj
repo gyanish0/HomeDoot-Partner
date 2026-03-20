@@ -13,6 +13,7 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1426493454394FA08D1DDA1E /* Roboto-ThinItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D6D56D1EC056410DA078850B /* Roboto-ThinItalic.ttf */; };
+		1A2B3C4D5E6F708190A0B0C0 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708190A0B0C1 /* GoogleService-Info.plist */; };
 		2762B0C6914146B38E45B2D3 /* Roboto-LightItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3E6CCB797D844C1AA263D97D /* Roboto-LightItalic.ttf */; };
 		2978229542FE477788044964 /* Roboto-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 88D3E49808294D6CB4AAF8D4 /* Roboto-Medium.ttf */; };
 		32AA5DD7014E43258D20861A /* Roboto-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 56364ACFB86A461F9298AD1A /* Roboto-Regular.ttf */; };
@@ -70,6 +71,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = HomeDootPartner/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = HomeDootPartner/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = HomeDootPartner/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708190A0B0C1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "HomeDootPartner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		1E86294F0738A384E7481BC6 /* Pods-HomeDootPartner-HomeDootPartnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HomeDootPartner-HomeDootPartnerTests.release.xcconfig"; path = "Target Support Files/Pods-HomeDootPartner-HomeDootPartnerTests/Pods-HomeDootPartner-HomeDootPartnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		3B060927B31843399644945F /* Roboto-BlackItalic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Roboto-BlackItalic.ttf"; path = "../assets/fonts/Roboto-BlackItalic.ttf"; sourceTree = "<group>"; };
 		3D791D60A633A9647755E3C0 /* Pods-HomeDootPartner-HomeDootPartnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HomeDootPartner-HomeDootPartnerTests.debug.xcconfig"; path = "Target Support Files/Pods-HomeDootPartner-HomeDootPartnerTests/Pods-HomeDootPartner-HomeDootPartnerTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 				59F2E88E2E34C674001FB451 /* AirMaps.xcodeproj */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				1A2B3C4D5E6F708190A0B0C1 /* GoogleService-Info.plist */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -366,6 +369,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A2B3C4D5E6F708190A0B0C0 /* GoogleService-Info.plist in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				E797BCFAB7A15EFEFBF5F72C /* PrivacyInfo.xcprivacy in Resources */,

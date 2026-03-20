@@ -5,6 +5,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -16,6 +17,7 @@ import {
 import { getProfileImageUrl } from '../utils/imageUtils';
 
 const VendorProfileExample = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
 
     // Get data from Redux store
@@ -53,7 +55,11 @@ const VendorProfileExample = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: insets.bottom }}
+                showsVerticalScrollIndicator={false}
+            >
                 {vendor && (
                     <>
                         {/* Profile Header */}
@@ -148,8 +154,6 @@ const VendorProfileExample = ({ navigation }) => {
                         </View>
                     </>
                 )}
-
-                <View style={{ height: 30 }} />
             </ScrollView>
         </View>
     );

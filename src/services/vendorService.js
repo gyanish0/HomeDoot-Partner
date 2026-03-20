@@ -184,7 +184,6 @@ export const updateVendorProfile = async (profileData) => {
             formData.append('password_confirmation', profileData.password);
         }
 
-        console.log('📤 Updating vendor profile');
 
         const response = await axiosInstance.post('profile/update', formData, {
             headers: {
@@ -341,15 +340,6 @@ export const updateVendorBankDetails = async (bankData) => {
             formData.append('hid_cheque_file', bankData.existingChequeFile);
         }
 
-        console.log('📤 Sending bank details update:', {
-            accountNumber: bankData.accountNumber,
-            bankName: bankData.bankName,
-            branchName: bankData.branchName,
-            ifscCode: bankData.ifscCode,
-            hasChequeFile: !!bankData.cancelledCheque,
-            approval: '0',
-        });
-
         const response = await axiosInstance.post('bank/update', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -461,7 +451,6 @@ export const verifyJobStopOTP = async (orderNo, otp) => {
 };
 
 export const rescheduleVendorOrder = async (orderNo, serviceDate, serviceTime, vendorId) => {
-    console.log('Rescheduling order:', { orderNo, serviceDate, serviceTime, vendorId });
     try {
         const response = await axiosInstance.post('order/reschedule', {
             order_no: orderNo,
@@ -566,18 +555,6 @@ export const updateVendorBusinessDetails = async (businessData) => {
             formData.append('aadhar_back_val', aadharBackData.name);
         }
 
-        console.log('📤 Sending business details update:', {
-            businessName: businessData.businessName,
-            contactPerson: businessData.contactPerson,
-            contactMobile: businessData.mobile,
-            hasGstFile: !!businessData.gstFile,
-            hasPanFile: !!businessData.panFile,
-            hasTanFile: !!businessData.udyogFile,
-            hasAddressProof: !!businessData.addressProof,
-            hasAadharProof: !!businessData.aadharProof,
-            hasAadharBack: !!businessData.aadharBack,
-        });
-
         const response = await axiosInstance.post('update-business', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -602,8 +579,6 @@ export const updateVendorLeave = async (leaveData) => {
             non_availability_to: leaveData.non_availability_to,
         };
 
-        console.log('📤 Updating vendor leave period:', requestData);
-
         const response = await axiosInstance.post('profile/update-leave', requestData);
         return response;
     } catch (error) {
@@ -617,8 +592,6 @@ export const createWalletOrder = async (amount) => {
         const requestData = {
             amount: amount,
         };
-
-        console.log('📤 Creating wallet order:', requestData);
 
         const response = await axiosInstance.post('wallet/add-amount', requestData);
         return response;
@@ -635,8 +608,6 @@ export const verifyWalletPayment = async (paymentData) => {
             razorpay_payment_id: paymentData.razorpay_payment_id,
             razorpay_signature: paymentData.razorpay_signature,
         };
-
-        console.log('📤 Verifying wallet payment:', requestData);
 
         const response = await axiosInstance.post('wallet/verify-payment', requestData);
         return response;

@@ -12,6 +12,7 @@ import {
     Platform,
     Modal
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -46,6 +47,7 @@ const profileValidationSchema = Yup.object().shape({
 });
 
 const EditProfileScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const vendor = useSelector(selectVendor);
     const states = useSelector(selectStates);
@@ -307,7 +309,11 @@ const EditProfileScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: 30 + insets.bottom }}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Employee ID */}
                 <View style={styles.inputContainer}>
                     <Text style={styles.label}>Employee ID</Text>
@@ -596,7 +602,6 @@ const EditProfileScreen = ({ navigation }) => {
                     )}
                 </TouchableOpacity>
 
-                <View style={{ height: 30 }} />
             </ScrollView>
 
             {/* Category Dropdown Modal */}

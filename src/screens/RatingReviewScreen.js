@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mockReviewsData } from '../data/mockData';
 import Colors from '../constants/Colors';
 import { getVendorRatings } from '../services/vendorService';
 import { formatDisplayDate } from '../utils/dateUtils';
 
 const RatingReviewScreen = () => {
+    const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [reviews, setReviews] = useState(mockReviewsData.data);
     const [selectedFilter, setSelectedFilter] = useState('all');
@@ -171,7 +173,7 @@ const RatingReviewScreen = () => {
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
                 }
-                contentContainerStyle={styles.listContainer}
+                contentContainerStyle={[styles.listContainer, { paddingBottom: insets.bottom }]}
             />
         </View>
     );

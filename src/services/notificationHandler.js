@@ -1,6 +1,17 @@
 import messaging from '@react-native-firebase/messaging';
+import { getApps } from '@react-native-firebase/app';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import { Platform, PermissionsAndroid } from 'react-native';
+
+function isFirebaseReady() {
+    const apps = getApps();
+    if (!apps || apps.length === 0) {
+        console.warn('Firebase app is not initialized. Skipping messaging setup.');
+        return false;
+    }
+
+    return true;
+}
 
 // Create Android notification channel with custom sound
 export async function createNotificationChannel() {
@@ -23,6 +34,10 @@ export async function createNotificationChannel() {
 
 // Request notification permissions (Android 13+ and iOS)
 export async function requestNotificationPermission() {
+    if (!isFirebaseReady()) {
+        return false;
+    }
+
     if (Platform.OS === 'android' && Platform.Version >= 33) {
         const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
@@ -73,6 +88,10 @@ export async function displayLocalNotification(remoteMessage) {
 
 // Setup foreground notification listener
 export function setupForegroundNotifications(onNewOrder) {
+    if (!isFirebaseReady()) {
+        return () => { };
+    }
+
     const unsubscribe = messaging().onMessage(async remoteMessage => {
         console.log('FCM Foreground Message:', remoteMessage);
 
@@ -90,6 +109,10 @@ export function setupForegroundNotifications(onNewOrder) {
 
 // Handle notification opened from background state
 export function setupNotificationOpenedHandler(navigationRef) {
+    if (!isFirebaseReady()) {
+        return () => { };
+    }
+
     const unsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
         console.log('Notification opened from background:', remoteMessage);
         if (remoteMessage?.data?.type === 'new_order') {
@@ -103,6 +126,10 @@ export function setupNotificationOpenedHandler(navigationRef) {
 
 // Handle notification that opened app from killed state
 export async function handleInitialNotification(navigationRef) {
+    if (!isFirebaseReady()) {
+        return;
+    }
+
     const remoteMessage = await messaging().getInitialNotification();
     if (remoteMessage?.data?.type === 'new_order') {
         // Will navigate after navigation is ready
@@ -126,6 +153,10 @@ export function setupNotifeeEventHandler(navigationRef) {
 
 // Background event handler for notifee (must be called at app entry point)
 export function setupBackgroundHandler() {
+    if (!isFirebaseReady()) {
+        return;
+    }
+
     // Firebase background message handler
     messaging().setBackgroundMessageHandler(async remoteMessage => {
         console.log('FCM Background Message:', remoteMessage);
