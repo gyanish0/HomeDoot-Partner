@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "422180881972",
+    "project_id": "homedoot-50cc7",
+    "storage_bucket": "homedoot-50cc7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422180881972:android:9b0aa237f3ce50df4aec61",
+        "android_client_info": {
+          "package_name": "com.homedoot.partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDN-Ki1mURLBKF0wsK90-8Q8X22we0G9Ro"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
