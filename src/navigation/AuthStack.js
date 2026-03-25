@@ -18,9 +18,33 @@ const AuthStack = () => {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Otp" component={OtpScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="BusinessDetails" component={BusinessDetailsScreen} />
-            <Stack.Screen name="BankDetails" component={BankDetailsScreen} />
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen
+                name="BusinessDetails"
+                component={BusinessDetailsScreen}
+                options={({ route }) => ({
+                    headerShown: true,
+                    title: 'Business Details',
+                    headerLeft: route?.params?.hideBackButton ? () => null : undefined,
+                })}
+            />
+            <Stack.Screen
+                name="BankDetails"
+                component={BankDetailsScreen}
+                options={({ route }) => ({
+                    headerShown: true,
+                    title: 'Bank Details',
+                    headerLeft: route?.params?.hideBackButton ? () => null : undefined,
+                })}
+            />
+            <Stack.Screen
+                name="EditProfile"
+                component={EditProfileScreen}
+                options={({ route }) => ({
+                    headerShown: true,
+                    title: 'Edit Profile',
+                    headerLeft: route?.params?.hideBackButton ? () => null : undefined,
+                })}
+            />
         </Stack.Navigator>
     );
 };

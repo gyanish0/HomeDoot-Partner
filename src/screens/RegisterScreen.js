@@ -27,7 +27,7 @@ const RegisterScreen = ({ navigation }) => {
                     navigation.navigate('Otp', {
                         mobileNumber: values.mobileNumber,
                         otpMessage: result.message,
-                        from: 'login'
+                        from: 'register'
                     });
                 } else {
                     Alert.alert('Error', result.message || 'Failed to send OTP. Please try again.');

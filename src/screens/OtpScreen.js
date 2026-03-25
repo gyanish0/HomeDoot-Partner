@@ -13,6 +13,7 @@ const otpValidationSchema = Yup.object().shape({
 
 const OtpScreen = ({ navigation, route }) => {
     const { mobileNumber, otpMessage } = route.params || {};
+    const from = route?.params?.from;
     const [timer, setTimer] = useState(30);
     const [canResend, setCanResend] = useState(false);
     const inputRefs = useRef([]);
@@ -46,7 +47,8 @@ const OtpScreen = ({ navigation, route }) => {
                     // Redirect to Edit Profile screen for new vendor to complete registration
                     navigation.replace('EditProfile', {
                         vendor: result?.vendor,
-                        isNewVendor: true
+                        isNewVendor: true,
+                        hideBackButton: from === 'login',
                     });
                 } else {
                     // After successful OTP verification, update FCM token and proceed to main app

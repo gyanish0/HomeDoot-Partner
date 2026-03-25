@@ -71,7 +71,10 @@ const BusinessDetailsScreen = ({ navigation, route }) => {
                 if (response.success) {
                     Alert.alert('Success', response.message || 'Business details updated successfully!');
                     if (isNewVendorFlow) {
-                        navigation.replace('BankDetails', { isNewVendor: true });
+                        navigation.replace('BankDetails', {
+                            isNewVendor: true,
+                            hideBackButton: route?.params?.hideBackButton,
+                        });
                     } else {
                         navigation.goBack();
                     }

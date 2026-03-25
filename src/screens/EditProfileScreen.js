@@ -174,10 +174,20 @@ const EditProfileScreen = ({ navigation, route }) => {
                 if (profileImage) {
                     profileData.profile_photo = profileImage;
                 }
-
+                console.log(profileData, 'profileData')
                 const response = await updateVendorProfile(profileData);
 
                 if (response.success) {
+                    formik.resetForm();
+                    setProfileImage(null);
+                    setStartDate(null);
+                    setEndDate(null);
+                    setStartDateText('');
+                    setEndDateText('');
+                    setDateError('');
+                    setSelectedSubCategories([]);
+                    setActivePicker(null);
+
                     Alert.alert('Success', 'Profile updated successfully!');
 
                     let latestVendor = vendor || routeVendor || authUser;
@@ -193,6 +203,7 @@ const EditProfileScreen = ({ navigation, route }) => {
                         navigation.replace('BusinessDetails', {
                             isNewVendor: true,
                             vendor: latestVendor,
+                            hideBackButton: route?.params?.hideBackButton,
                         });
                     } else {
                         navigation.reset({
@@ -330,7 +341,6 @@ const EditProfileScreen = ({ navigation, route }) => {
 
     return (
         <View style={styles.container}>
-
             <ScrollView
                 style={styles.content}
                 contentContainerStyle={{ paddingBottom: 30 + insets.bottom }}
