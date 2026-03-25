@@ -3,7 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { useDispatch, useSelector } from 'react-redux';
 import { getVendorBankDetails, updateVendorBankDetails } from '../services/vendorService';
+import { completeNewVendorOnboarding, updateFcmToken } from '../store/slices/authSlice';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const bankValidationSchema = Yup.object().shape({
@@ -14,7 +16,10 @@ const bankValidationSchema = Yup.object().shape({
     branchName: Yup.string().required('Branch name is required'),
 });
 
-const BankDetailsScreen = ({ navigation }) => {
+const BankDetailsScreen = ({ navigation, route }) => {
+    const dispatch = useDispatch();
+    const authUser = useSelector((state) => state.auth.user);
+    const isNewVendorFlow = !!route?.params?.isNewVendor;
     const [loading, setLoading] = useState(false);
     const [fetchingData, setFetchingData] = useState(true);
     const [cancelledCheque, setCancelledCheque] = useState(null);
@@ -54,7 +59,16 @@ const BankDetailsScreen = ({ navigation }) => {
 
                 if (response.success) {
                     Alert.alert('Success', response.message || 'Bank details updated successfully!');
-                    navigation.goBack();
+                    if (isNewVendorFlow) {
+                        await dispatch(completeNewVendorOnboarding(authUser)).unwrap();
+                        dispatch(updateFcmToken());
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Main', params: { screen: 'Home' } }],
+                        });
+                    } else {
+                        navigation.goBack();
+                    }
                 } else {
                     Alert.alert('Error', response.message || 'Failed to update bank details');
                 }
@@ -273,14 +287,16 @@ const BankDetailsScreen = ({ navigation }) => {
                 </TouchableOpacity>
 
                 {/* Cancel/Back Button */}
-                <TouchableOpacity
-                    style={styles.skipButton}
-                    onPress={handleSkip}
-                >
-                    <Text style={styles.skipButtonText}>
-                        {existingBankDetails ? 'Cancel' : 'Skip for now'}
-                    </Text>
-                </TouchableOpacity>
+                {!isNewVendorFlow && (
+                    <TouchableOpacity
+                        style={styles.skipButton}
+                        onPress={handleSkip}
+                    >
+                        <Text style={styles.skipButtonText}>
+                            {existingBankDetails ? 'Cancel' : 'Skip for now'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </ScrollView>
         </View>
     );

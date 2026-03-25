@@ -46,10 +46,11 @@ const profileValidationSchema = Yup.object().shape({
     category: Yup.string().required('Category is required'),
 });
 
-const EditProfileScreen = ({ navigation }) => {
+const EditProfileScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const vendor = useSelector(selectVendor);
+    const authUser = useSelector((state) => state.auth.user);
     const states = useSelector(selectStates);
     const cities = useSelector(selectCities);
     const categories = useSelector(selectCategories);
@@ -71,6 +72,8 @@ const EditProfileScreen = ({ navigation }) => {
     const [showStateDropdown, setShowStateDropdown] = useState(false);
     const [showCityDropdown, setShowCityDropdown] = useState(false);
     const [selectedSubCategories, setSelectedSubCategories] = useState([]);
+    const isNewVendorFlow = !!route?.params?.isNewVendor;
+    const routeVendor = route?.params?.vendor;
     const formatDate = (date) => (date ? date.toISOString().split('T')[0] : '');
 
     useEffect(() => {
@@ -176,8 +179,27 @@ const EditProfileScreen = ({ navigation }) => {
 
                 if (response.success) {
                     Alert.alert('Success', 'Profile updated successfully!');
-                    dispatch(fetchVendorProfile());
-                    navigation.goBack();
+
+                    let latestVendor = vendor || routeVendor || authUser;
+
+                    try {
+                        const profilePayload = await dispatch(fetchVendorProfile()).unwrap();
+                        latestVendor = profilePayload?.vendor || latestVendor;
+                    } catch (profileError) {
+                        console.warn('Failed to refresh profile after update:', profileError);
+                    }
+
+                    if (isNewVendorFlow) {
+                        navigation.replace('BusinessDetails', {
+                            isNewVendor: true,
+                            vendor: latestVendor,
+                        });
+                    } else {
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Main', params: { screen: 'Home' } }],
+                        });
+                    }
                 } else {
                     Alert.alert('Error', response.message || 'Failed to update profile');
                 }
@@ -430,13 +452,14 @@ const EditProfileScreen = ({ navigation }) => {
                             Mobile <Text style={styles.required}>*</Text>
                         </Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, styles.disabledInput]}
                             placeholder="Mobile Number"
                             keyboardType="phone-pad"
                             maxLength={10}
                             value={formik.values.mobile}
                             onChangeText={formik.handleChange('mobile')}
                             onBlur={formik.handleBlur('mobile')}
+                            editable={false}
                         />
                         {formik.touched.mobile && formik.errors.mobile && (
                             <Text style={styles.errorText}>{formik.errors.mobile}</Text>

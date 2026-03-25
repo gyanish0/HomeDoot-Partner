@@ -4,7 +4,7 @@
  */
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getUserData, saveUserData, clearStorage, getToken, saveToken } from '../../utils/storage';
+import { getUserData, saveUserData, clearStorage, getToken, saveToken, setSessionToken } from '../../utils/storage';
 import * as authAPI from '../../services/authService';
 import messaging from '@react-native-firebase/messaging';
 import { getApps } from '@react-native-firebase/app';
@@ -44,13 +44,45 @@ export const verifyOTP = createAsyncThunk(
         try {
             const response = await authAPI.verifyOTP(mobile, otp);
             if (response.status && response.token) {
-                await saveToken(response.token);
-                await saveUserData(response.vendor);
-                return { token: response.token, user: response.vendor };
+                if (response.is_new_vendor) {
+                    setSessionToken(response.token);
+                } else {
+                    await saveToken(response.token);
+                    await saveUserData(response.vendor || response.user);
+                }
+                return response;
             }
             return rejectWithValue(response.message || 'Verification failed');
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    }
+);
+
+export const completeNewVendorOnboarding = createAsyncThunk(
+    'auth/completeNewVendorOnboarding',
+    async (vendorData, { getState, rejectWithValue }) => {
+        try {
+            const { token, user } = getState().auth;
+            const finalVendorData = vendorData || user;
+
+            if (!token) {
+                return rejectWithValue('Authentication token is missing. Please login again.');
+            }
+
+            if (!finalVendorData) {
+                return rejectWithValue('Vendor data is missing. Please login again.');
+            }
+
+            await saveToken(token);
+            await saveUserData(finalVendorData);
+
+            return {
+                token,
+                user: finalVendorData,
+            };
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to complete onboarding');
         }
     }
 );
@@ -179,12 +211,28 @@ const authSlice = createSlice({
             })
             .addCase(verifyOTP.fulfilled, (state, action) => {
                 state.loading = false;
-                state.user = action.payload.user;
+                state.user = action.payload.vendor || action.payload.user || null;
                 state.token = action.payload.token;
-                state.isLoggedIn = true;
+                state.isLoggedIn = !action.payload?.is_new_vendor;
                 state.otpSent = false;
             })
             .addCase(verifyOTP.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+
+            // Complete new vendor onboarding
+            .addCase(completeNewVendorOnboarding.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(completeNewVendorOnboarding.fulfilled, (state, action) => {
+                state.loading = false;
+                state.user = action.payload.user;
+                state.token = action.payload.token;
+                state.isLoggedIn = true;
+            })
+            .addCase(completeNewVendorOnboarding.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })

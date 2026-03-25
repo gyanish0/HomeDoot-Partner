@@ -39,8 +39,20 @@ const OtpScreen = ({ navigation, route }) => {
         onSubmit: async (values) => {
             try {
                 const result = await dispatch(verifyOTP({ mobile: mobileNumber, otp: values.otp })).unwrap();
-                // After successful OTP verification, update FCM token
-                dispatch(updateFcmToken());
+                console.log(result, 'result', route.params)
+
+                // Check if this is a new vendor
+                if (result?.is_new_vendor) {
+                    // Redirect to Edit Profile screen for new vendor to complete registration
+                    navigation.replace('EditProfile', {
+                        vendor: result?.vendor,
+                        isNewVendor: true
+                    });
+                } else {
+                    // After successful OTP verification, update FCM token and proceed to main app
+                    dispatch(updateFcmToken());
+                    navigation.replace('Dashboard');
+                }
             } catch (error) {
                 const errorMessage = typeof error === 'string' ? error : error?.message || 'Verification failed. Please try again.';
                 Alert.alert('Error', errorMessage);

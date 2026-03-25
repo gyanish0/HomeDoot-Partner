@@ -16,8 +16,9 @@ const businessValidationSchema = Yup.object().shape({
     aadharNumber: Yup.string().matches(/^[0-9]{12}$/, 'Aadhar must be 12 digits').required('Aadhar number is required'),
 });
 
-const BusinessDetailsScreen = ({ navigation }) => {
+const BusinessDetailsScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
+    const isNewVendorFlow = !!route?.params?.isNewVendor;
     const [loading, setLoading] = useState(false);
     const [fetchingData, setFetchingData] = useState(true);
     const [existingBusinessDetails, setExistingBusinessDetails] = useState(null);
@@ -69,7 +70,11 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
                 if (response.success) {
                     Alert.alert('Success', response.message || 'Business details updated successfully!');
-                    navigation.goBack();
+                    if (isNewVendorFlow) {
+                        navigation.replace('BankDetails', { isNewVendor: true });
+                    } else {
+                        navigation.goBack();
+                    }
                 } else {
                     Alert.alert('Error', response.message || 'Failed to update business details');
                 }

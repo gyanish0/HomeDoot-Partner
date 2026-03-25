@@ -45,7 +45,6 @@ export const fetchCitiesByState = createAsyncThunk(
     async (stateId, { rejectWithValue }) => {
         try {
             const response = await getCities(stateId);
-
             if (response) {
                 return response || [];
             } else {

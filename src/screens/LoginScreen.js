@@ -23,8 +23,10 @@ const LoginScreen = ({ navigation }) => {
         onSubmit: async (values) => {
             try {
                 const result = await dispatch(sendOTP(values.mobileNumber)).unwrap();
+                console.log(result, 'resultresultresult=resultresult')
                 if (result.status) {
                     navigation.navigate('Otp', {
+                        ...result,
                         mobileNumber: values.mobileNumber,
                         otpMessage: result.message,
                         from: 'login'

@@ -5,6 +5,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+let sessionAuthToken = null;
+
 const STORAGE_KEYS = {
     USER_DATA: '@homedoot_user_data',
     AUTH_TOKEN: '@homedoot_auth_token',
@@ -50,6 +52,7 @@ export const getUserData = async () => {
  */
 export const saveAuthToken = async (token) => {
     try {
+        sessionAuthToken = token || null;
         await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
         return true;
     } catch (error) {
@@ -67,15 +70,20 @@ export const saveToken = saveAuthToken;
  */
 export const getAuthToken = async () => {
     try {
-        return await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        return storedToken || sessionAuthToken;
     } catch (error) {
         console.error('Error getting auth token:', error);
-        return null;
+        return sessionAuthToken;
     }
 };
 
 // Alias for getAuthToken
 export const getToken = getAuthToken;
+
+export const setSessionToken = (token) => {
+    sessionAuthToken = token || null;
+};
 
 /**
  * Check if user is logged in
@@ -109,6 +117,7 @@ export const getVendorId = async () => {
  */
 export const clearStorage = async () => {
     try {
+        sessionAuthToken = null;
         await AsyncStorage.multiRemove([
             STORAGE_KEYS.USER_DATA,
             STORAGE_KEYS.AUTH_TOKEN,
@@ -164,6 +173,7 @@ export default {
     getUserData,
     saveAuthToken,
     getAuthToken,
+    setSessionToken,
     isLoggedIn,
     getVendorId,
     clearStorage,
