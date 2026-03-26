@@ -1,40 +1,36 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
-const config = async () => {
-  const defaultConfig = await getDefaultConfig(__dirname);
-  const {
-    resolver: { sourceExts, assetExts },
-  } = defaultConfig;
+const defaultConfig = getDefaultConfig(__dirname);
+const {
+  resolver: { sourceExts, assetExts },
+} = defaultConfig;
 
-  return mergeConfig(defaultConfig, {
-    transformer: {
-      babelTransformerPath: require.resolve('react-native-svg-transformer'),
-      getTransformOptions: async () => ({
-        transform: {
-          experimentalImportSupport: false,
-          inlineRequires: true,
-        },
-      }),
-    },
-    resolver: {
-      assetExts: assetExts.filter(ext => ext !== 'svg'),
-      sourceExts: [...sourceExts, 'svg'],
-      // Resolve axios to use browser build instead of node build
-      resolveRequest: (context, moduleName, platform) => {
-        if (moduleName === 'axios') {
-          return {
-            filePath: require.resolve('axios/dist/browser/axios.cjs'),
-            type: 'sourceFile',
-          };
-        }
-        // Let Metro resolve all other modules
-        return context.resolveRequest(context, moduleName, platform);
+const config = {
+  transformer: {
+    babelTransformerPath: require.resolve('react-native-svg-transformer'),
+    getTransformOptions: async () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: true,
       },
+    }),
+  },
+  resolver: {
+    assetExts: assetExts.filter(ext => ext !== 'svg'),
+    sourceExts: [...sourceExts, 'svg'],
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === 'axios') {
+        return {
+          filePath: require.resolve('axios/dist/browser/axios.cjs'),
+          type: 'sourceFile',
+        };
+      }
+      return context.resolveRequest(context, moduleName, platform);
     },
-  });
+  },
 };
 
-module.exports = config;
+module.exports = mergeConfig(defaultConfig, config);
 
 
 // const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
