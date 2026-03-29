@@ -34,7 +34,7 @@ const CustomHeader = () => {
                     </TouchableOpacity>
 
                     {/* Notification Icon */}
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         style={styles.notificationButton}
                         onPress={() => navigation.navigate('Notifications')}
                     >
@@ -44,7 +44,7 @@ const CustomHeader = () => {
                                 <Text style={styles.badgeText}>{notificationCount}</Text>
                             </View>
                         )}
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
             </View>
         </SafeAreaView>

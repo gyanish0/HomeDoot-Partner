@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { mockReviewsData } from '../data/mockData';
+
 import Colors from '../constants/Colors';
 import { getVendorRatings } from '../services/vendorService';
 import { formatDisplayDate } from '../utils/dateUtils';
@@ -9,7 +9,8 @@ import { formatDisplayDate } from '../utils/dateUtils';
 const RatingReviewScreen = () => {
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
-    const [reviews, setReviews] = useState(mockReviewsData.data);
+    const [reviews, setReviews] = useState([]);
+    const [ratingSummary, setRatingSummary] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -23,25 +24,36 @@ const RatingReviewScreen = () => {
         try {
             const perPage = 20;
             const response = await getVendorRatings(currentPage, perPage);
+            console.log(response, '-------1111')
+            if (response?.status && response?.data) {
+                const apiData = response.data;
+                const apiReviews = Array.isArray(apiData.reviews) ? apiData.reviews : [];
 
-            if (response?.success && response?.data) {
-                const transformedReviews = response.data.map(item => ({
+                const transformedReviews = apiReviews.map(item => ({
                     id: item.id,
-                    customer_name: item.customer_name || item.user_name,
-                    service: item.service || item.service_name,
-                    rating: parseFloat(item.rating),
-                    comment: item.comment || item.review || item.feedback,
-                    date: item.date || item.created_at,
+                    customer_name: item.customers?.name || item.customer_name || item.user_name || 'Customer',
+                    service: item.service || item.service_name || item.order_no || 'Service',
+                    rating: Number(item.rating) || 0,
+                    comment: item.review || item.comment || item.feedback || '',
+                    date: item.created_at || item.date,
+                    avatar_url: item.customers?.profile_photo_url || null,
                 }));
+
+                setRatingSummary({
+                    averageRating: Number(apiData.average_rating) || 0,
+                    totalReviews: Number(apiData.total_reviews) || transformedReviews.length,
+                    ratingBreakup: Array.isArray(apiData.rating_breakup) ? apiData.rating_breakup : [],
+                });
+
                 setReviews(transformedReviews);
             } else {
-                // Fallback to mock data
-                setReviews(mockReviewsData.data);
+                setRatingSummary(null);
             }
         } catch (error) {
             console.error('Error loading reviews:', error);
-            Alert.alert('Error', 'Failed to load reviews. Using local data.');
-            setReviews(mockReviewsData.data);
+            Alert.alert('Error', 'Failed to load reviews.');
+            setReviews([]);
+            setRatingSummary(null);
         } finally {
             setLoading(false);
         }
@@ -70,7 +82,11 @@ const RatingReviewScreen = () => {
             <View style={styles.reviewHeader}>
                 <View style={styles.reviewerInfo}>
                     <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{item.customer_name.charAt(0)}</Text>
+                        {item.avatar_url ? (
+                            <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>{item.customer_name?.charAt(0) || 'C'}</Text>
+                        )}
                     </View>
                     <View>
                         <Text style={styles.customerName}>{item.customer_name}</Text>
@@ -92,31 +108,40 @@ const RatingReviewScreen = () => {
     );
 
     const renderSummary = () => {
-        const totalReviews = reviews.length;
-        const averageRating = (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(1);
-        const fiveStarCount = reviews.filter(r => r.rating === 5).length;
-        const fourStarCount = reviews.filter(r => r.rating === 4).length;
-        const threeStarCount = reviews.filter(r => r.rating === 3).length;
-        const twoStarCount = reviews.filter(r => r.rating === 2).length;
-        const oneStarCount = reviews.filter(r => r.rating === 1).length;
+        const computedTotal = reviews.length;
+        const computedAverage = computedTotal > 0
+            ? reviews.reduce((sum, review) => sum + review.rating, 0) / computedTotal
+            : 0;
+
+        const totalReviews = ratingSummary?.totalReviews ?? computedTotal;
+        const averageRatingValue = ratingSummary?.averageRating ?? computedAverage;
+        const averageRating = averageRatingValue.toFixed(1);
+
+        const getBreakupCount = (star) => {
+            if (Array.isArray(ratingSummary?.ratingBreakup) && ratingSummary.ratingBreakup.length > 0) {
+                const entry = ratingSummary.ratingBreakup.find(item => Number(item.rating) === star);
+                return Number(entry?.total) || 0;
+            }
+            return reviews.filter(r => Math.round(r.rating) === star).length;
+        };
 
         return (
             <View style={styles.summaryContainer}>
                 <View style={styles.overallRating}>
                     <Text style={styles.ratingNumber}>{averageRating}</Text>
                     <View style={styles.starsContainerLarge}>
-                        {renderStars(Math.round(parseFloat(averageRating)))}
+                        {renderStars(Math.round(averageRatingValue))}
                     </View>
                     <Text style={styles.totalReviews}>{totalReviews} reviews</Text>
                 </View>
 
                 <View style={styles.ratingBreakdown}>
                     {[
-                        { stars: 5, count: fiveStarCount },
-                        { stars: 4, count: fourStarCount },
-                        { stars: 3, count: threeStarCount },
-                        { stars: 2, count: twoStarCount },
-                        { stars: 1, count: oneStarCount },
+                        { stars: 5, count: getBreakupCount(5) },
+                        { stars: 4, count: getBreakupCount(4) },
+                        { stars: 3, count: getBreakupCount(3) },
+                        { stars: 2, count: getBreakupCount(2) },
+                        { stars: 1, count: getBreakupCount(1) },
                     ].map(({ stars, count }) => (
                         <View key={stars} style={styles.breakdownRow}>
                             <Text style={styles.breakdownLabel}>{stars} ⭐</Text>
@@ -124,7 +149,7 @@ const RatingReviewScreen = () => {
                                 <View
                                     style={[
                                         styles.progressFill,
-                                        { width: `${(count / totalReviews) * 100}%` }
+                                        { width: `${totalReviews > 0 ? (count / totalReviews) * 100 : 0}%` }
                                     ]}
                                 />
                             </View>
@@ -158,10 +183,14 @@ const RatingReviewScreen = () => {
         </View>
     );
 
+    const filteredReviews = selectedFilter === 'all'
+        ? reviews
+        : reviews.filter(r => r.rating === Number(selectedFilter));
+
     return (
         <View style={styles.container}>
             <FlatList
-                data={reviews}
+                data={filteredReviews}
                 renderItem={renderReview}
                 keyExtractor={(item) => item.id.toString()}
                 ListHeaderComponent={
@@ -169,6 +198,13 @@ const RatingReviewScreen = () => {
                         {renderSummary()}
                         {renderFilters()}
                     </>
+                }
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>
+                            {loading ? 'Loading reviews...' : 'No reviews found'}
+                        </Text>
+                    </View>
                 }
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
@@ -310,6 +346,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 20,
+    },
     customerName: {
         fontSize: 15,
         fontWeight: '600',
@@ -353,6 +394,15 @@ const styles = StyleSheet.create({
     },
     date: {
         fontSize: 12,
+        color: '#999',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
+    emptyText: {
+        fontSize: 15,
         color: '#999',
     },
 });

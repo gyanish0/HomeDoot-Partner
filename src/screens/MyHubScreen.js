@@ -83,6 +83,13 @@ const MyHubScreen = ({ navigation }) => {
                 <View style={styles.emptyContainer}>
                     <Icon name="map-marker-off" size={60} color="#999" />
                     <Text style={styles.emptyText}>No service areas assigned</Text>
+                    <TouchableOpacity
+                        style={styles.emptyAddHubButton}
+                        onPress={() => navigation.navigate('ManageHub')}
+                    >
+                        <Icon name="plus-circle" size={22} color="#fff" />
+                        <Text style={styles.emptyAddHubButtonText}>Add Hub Area</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <ScrollView
@@ -389,6 +396,22 @@ const styles = StyleSheet.create({
         marginTop: 16,
         fontSize: 16,
         color: '#999',
+    },
+    emptyAddHubButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1DBFAF',
+        marginTop: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 10,
+    },
+    emptyAddHubButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
+        marginLeft: 8,
     },
     googleLogo: {
         position: 'absolute',

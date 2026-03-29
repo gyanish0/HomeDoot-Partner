@@ -217,7 +217,7 @@ export const getVendorAssignedOrders = async (page = 1, perPage = 20) => {
 
 export const getVendorCompletedOrders = async (page = 1, perPage = 20) => {
     try {
-        const response = await axiosInstance.get(`orders/completed`);
+        const response = await axiosInstance.get(`orders/completed?page=${page}&per_page=${perPage}`);
         return response;
     } catch (error) {
         throw error;

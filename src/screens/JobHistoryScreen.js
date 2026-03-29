@@ -1,77 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Colors from '../constants/Colors';
+import { formatDisplayDate } from '../utils/dateUtils';
+import { getVendorCompletedOrders } from '../services/vendorService';
 
 const JobHistoryScreen = () => {
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [currentPage] = useState(1);
+    const [perPage] = useState(20);
     const [jobHistory, setJobHistory] = useState([]);
 
     useEffect(() => {
         loadJobHistory();
     }, []);
 
-    const loadJobHistory = () => {
-        // Mock job history data - replace with actual API call
-        const mockHistory = [
-            {
-                id: 1,
-                customerName: 'Priyanka naik',
-                time: '02:00 PM',
-                date: '22 Jan 2026',
-                jobValue: 3630,
-                onlinePayment: 3630
-            },
-            {
-                id: 2,
-                customerName: 'Sheetal Mankoo',
-                time: '04:00 PM',
-                date: '19 Jan 2026',
-                jobValue: 2207,
-                onlinePayment: 2207
-            },
-            {
-                id: 3,
-                customerName: 'Shubhangi',
-                time: '04:30 PM',
-                date: '18 Jan 2026',
-                jobValue: 4155,
-                onlinePayment: 4155
-            },
-            {
-                id: 4,
-                customerName: 'sneha raut',
-                time: '03:00 PM',
-                date: '18 Jan 2026',
-                jobValue: 918,
-                onlinePayment: 918
-            },
-            {
-                id: 5,
-                customerName: 'Abida Kazi',
-                time: '04:30 PM',
-                date: '17 Jan 2026',
-                jobValue: 2546,
-                onlinePayment: 2546
-            },
-            {
-                id: 6,
-                customerName: 'SHIVANGI RAI',
-                time: '01:00 PM',
-                date: '17 Jan 2026',
-                jobValue: 1850,
-                onlinePayment: 1850
+    const loadJobHistory = async () => {
+        setLoading(true);
+        try {
+            const response = await getVendorCompletedOrders(currentPage, perPage);
+            if (response?.status && response?.data?.data) {
+                const transformedHistory = response.data.data.map(order => {
+                    const serviceHour = parseInt(order.service_time, 10);
+                    const timeString = Number.isNaN(serviceHour)
+                        ? 'Time not set'
+                        : `${serviceHour > 12 ? serviceHour - 12 : serviceHour === 0 ? 12 : serviceHour}:00 ${serviceHour >= 12 ? 'PM' : 'AM'}`;
+
+                    const amount = Number(order.grand_total || order.sub_total || 0);
+                    const paymentMethod = (order.payment_method || '').toLowerCase();
+                    const isOnlinePayment = !['cash', 'cod'].includes(paymentMethod);
+
+                    return {
+                        id: order.id,
+                        customerName: order.other_first_name || order.user_name || 'Customer',
+                        time: timeString,
+                        date: formatDisplayDate(order.service_date || order.created_at?.split('T')[0]) || 'N/A',
+                        jobValue: amount,
+                        onlinePayment: isOnlinePayment ? amount : 0,
+                    };
+                });
+
+                setJobHistory(transformedHistory);
+            } else {
+                setJobHistory([]);
             }
-        ];
-        setJobHistory(mockHistory);
+        } catch (error) {
+            console.error('Error loading job history:', error);
+            Alert.alert('Error', 'Failed to load job history.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const onRefresh = () => {
+    const onRefresh = async () => {
         setRefreshing(true);
-        loadJobHistory();
-        setTimeout(() => setRefreshing(false), 1000);
+        await loadJobHistory();
+        setRefreshing(false);
     };
 
     const renderJobHistoryCard = (job) => (
@@ -111,8 +98,11 @@ const JobHistoryScreen = () => {
                     />
                 }
             >
-
-                {jobHistory.length > 0 ? (
+                {loading ? (
+                    <View style={styles.loaderContainer}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : jobHistory.length > 0 ? (
                     <View style={styles.historyList}>
                         {jobHistory.map(job => renderJobHistoryCard(job))}
                     </View>
@@ -208,6 +198,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#999',
         marginTop: 12,
+    },
+    loaderContainer: {
+        paddingVertical: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
