@@ -35,7 +35,7 @@ const JobHistoryScreen = () => {
 
                     return {
                         id: order.id,
-                        customerName: order.other_first_name || order.user_name || 'Customer',
+                        customerName: order.order_no || 'Customer',
                         time: timeString,
                         date: formatDisplayDate(order.service_date || order.created_at?.split('T')[0]) || 'N/A',
                         jobValue: amount,
