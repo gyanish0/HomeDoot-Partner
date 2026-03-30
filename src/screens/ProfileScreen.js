@@ -101,10 +101,10 @@ const ProfileScreen = () => {
                 <View style={styles.profileInfo}>
                     <Text style={styles.profileName}>{profileData?.name || 'Not Available'}</Text>
                     <Text style={styles.empId}>{vendor?.emp_id || 'Employee ID'}</Text>
-                    <View style={styles.ratingContainer}>
+                    {/* <View style={styles.ratingContainer}>
                         <Icon name="star" size={16} color="#FFB800" />
                         <Text style={styles.ratingText}>4.81</Text>
-                    </View>
+                    </View> */}
                 </View>
                 <Image
                     source={{ uri: getProfileImageUrl(profileData) }}
@@ -118,9 +118,9 @@ const ProfileScreen = () => {
                 <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileDetails')}>
                     <Text style={styles.actionButtonText}>Profile</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
+                {/* <TouchableOpacity style={styles.actionButton}>
                     <Text style={styles.actionButtonText}>Change photo</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </View>
 
             {/* Menu Items */}
