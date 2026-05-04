@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadUserData } from '../store/slices/authSlice';
 import AuthStack from './AuthStack';
@@ -24,7 +24,7 @@ import VendorProfileExample from '../screens/VendorProfileExample';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import JobDetailScreen from '../screens/JobDetailScreen';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 const RootNavigator = () => {
     const dispatch = useDispatch();
@@ -57,7 +57,7 @@ const RootNavigator = () => {
                         options={{
                             headerShown: true,
                             headerTitle: '',
-                            headerBackTitleVisible: false,
+                            headerBackTitle: '',
                         }}
                     />
                     <Stack.Screen
